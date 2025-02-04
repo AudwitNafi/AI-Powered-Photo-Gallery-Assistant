@@ -1,0 +1,15 @@
+gensim
+nltk
+matplotlib
+seaborn
+setuptools
+numpy
+pandas
+ipykernel
+scikit-learn
+chromadb
+torch
+ollama
+pillow
+requests
+open-clip-torch
