@@ -1,4 +1,5 @@
 import chromadb
+import os
 from chromadb.utils.embedding_functions import OpenCLIPEmbeddingFunction
 from chromadb.utils.data_loaders import ImageLoader
 
@@ -24,10 +25,10 @@ image_uris = sorted([os.path.join(IMAGE_FOLDER, image_name) for image_name in os
 ids = [str(i) for i in range(len(image_uris))]
 
 collection.add(ids=ids, uris=image_uris)
-
-# Get items from the collection
-# items = collection.get()
-# print(items)
+#
+# # Get items from the collection
+# # items = collection.get()
+# # print(items)
 
 # Or we can use the peek method
 collection.peek(limit=5)
