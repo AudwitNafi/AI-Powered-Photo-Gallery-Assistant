@@ -8,21 +8,13 @@ import base64
 from google import genai
 
 load_dotenv()
-
 API_KEY = os.getenv("GEMINI_API_KEY")
 MODEL = os.getenv("GEMINI_MODEL")
-
-# view available models
-# for m in genai.list_models():
-#   if 'generateContent' in m.supported_generation_methods:
-#     print(m.name)
-
-# model = genai.GenerativeModel(model_name = MODEL)
 
 client = genai.Client(api_key=API_KEY)
 
 # Create a chat session
-chat = client.chats.create(model="gemini-2.0-flash")
+chat = client.chats.create(model=MODEL)
 
 def get_gemini_response(user_input):
     """
