@@ -16,7 +16,17 @@ MODEL = os.getenv("GEMINI_MODEL")
 system_instruction = "You are a photo gallery assistant. You're responses should be to assist the user in retrieving relevant images, describe image or ask the user if they want relevant images based on user's previous prompt(s)."
 model = genai.GenerativeModel(MODEL, system_instruction=system_instruction)
 
-def rag_pipeline(query_text, top_k=1):
+def encode_image(uri):
+    img = Image.open(uri)
+    # retrieved_images.append((img, distance, description))
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+    buffer = BytesIO()
+    img.save(buffer, format="JPEG")
+    image_bytes = buffer.getvalue()
+    return {'mime_type': 'image/jpeg', 'data': base64.b64encode(image_bytes).decode('utf-8')}
+
+def rag_pipeline(query_text, top_k=3):
     """
     RAG pipeline to query images based on natural language descriptions and send images to LLM.
     """
@@ -41,25 +51,18 @@ def rag_pipeline(query_text, top_k=1):
     result_uris = image_results['uris']
     retrieved_images = []
     image_data = []
-
     # Retrieving corresponding images from the uris
     for uri in result_uris:
         print(uri)
         try:
-            # img = Image.open(image_uri)
-            img = Image.open(uri)
-            # retrieved_images.append((img, distance, description))
-            buffer = BytesIO()
-            img.save(buffer, format="JPEG")
-            image_bytes = buffer.getvalue()
-            image_data.append({'mime_type': 'image/jpeg', 'data': base64.b64encode(image_bytes).decode('utf-8')})
+            image_data.append(encode_image(uri))
         except FileNotFoundError:
             print(f"Image not found at: {uri}")
-        # else:
-        #     print(f"Invalid image ID: {image_id}")
-
+    # prompt_text = "Describe these images in a detailed but concise manner. Key aspects like objects and activities should be mentioned."
+    query_text+="\nDescribe these images concisely in a paragraph."
     prompt_parts = [
         query_text,  # Include the query as text part
+        # prompt_text,
         *image_data  # Include image data as image parts
     ]
 
@@ -68,7 +71,7 @@ def rag_pipeline(query_text, top_k=1):
         contents=prompt_parts
     )
 
-    return retrieved_images, llm_response.text
+    return result_uris, llm_response.text
 
 def image_rag_pipeline(query_uris):
     results = image_collection.query(
@@ -76,25 +79,17 @@ def image_rag_pipeline(query_uris):
         include=['uris']
     )
     result_uris = results['uris'][0]
-    # retrieved_images = []
-    image_data = []
+    image_data = [encode_image(query_uris)]
     for uri in result_uris:
-        print(uri)
+        # print(uri)
         try:
-            # img = Image.open(image_uri)
-            img = Image.open(uri)
-            # retrieved_images.append((img, distance, description))
-            buffer = BytesIO()
-            img.save(buffer, format="JPEG")
-            image_bytes = buffer.getvalue()
-            image_data.append({'mime_type': 'image/jpeg', 'data': base64.b64encode(image_bytes).decode('utf-8')})
+            image_data.append(encode_image(uri))
         except FileNotFoundError:
             print(f"Image not found at: {uri}")
-        # else:
-        #     print(f"Invalid image ID: {image_id}")
 
+    prompt_text = "Describe these images in a detailed but concise manner. Key aspects like objects and activities should be mentioned."
     prompt_parts = [
-        query_text,  # Include the query as text part
+        prompt_text,  # Include the query as text part
         *image_data  # Include image data as image parts
     ]
 

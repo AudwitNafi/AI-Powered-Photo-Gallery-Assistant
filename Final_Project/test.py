@@ -16,8 +16,10 @@ print(get_images('./uploads'))
 #     include=['uris']
 # )
 
-results = image_collection.query(
-    query_uris = ['uploads\A-clear-close-up-photo-of-a-woman.jpg'],
-    include=['uris']
-)
-print(results['uris'])
+# results = image_collection.query(
+#     query_uris = ['uploads\A-clear-close-up-photo-of-a-woman.jpg'],
+#     include=['uris']
+# )
+# print(results['uris'])
+
+# file_path = UPLOAD_DIR / file.filename
