@@ -15,6 +15,9 @@ app = FastAPI()
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
+QUERY_IMAGE_DIR = Path("query_images")
+QUERY_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+
 @app.post("/query")
 async def query(query_text: str):
     try:
@@ -48,3 +51,12 @@ async def upload(file: UploadFile = File(...)):
     add_description(description, desc_collection, image_id)
     # return {"filename": file.filename, "file_path": str(file_path)}
     return JSONResponse(content={"filename": file.filename, "url": f"/uploads/{file.filename}"})
+
+@app.post("/chat-upload")
+async def chat_upload(file: UploadFile = File(...)):
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Only image files are allowed")
+    file_location = QUERY_IMAGE_DIR  / file.filename
+    with open(file_location, "wb") as f:
+        f.write(await file.read())
+    return {"filepath": str(file_location)}
