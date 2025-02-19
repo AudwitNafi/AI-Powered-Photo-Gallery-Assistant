@@ -6,7 +6,8 @@ from utils.generate_description import generate_image_description
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 from pathlib import Path
-from rag import rag_pipeline, image_rag_pipeline
+# from rag import rag_pipeline, image_rag_pipeline
+from rag import unified_rag_pipeline
 import shutil
 
 image_collection, desc_collection = configure_db()
@@ -21,7 +22,7 @@ QUERY_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
 @app.post("/query")
 async def query(query_text: str):
     try:
-        return {"llm-response": rag_pipeline(query_text)}
+        return {"llm-response": unified_rag_pipeline(query_text)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -33,7 +34,7 @@ async def query(query_text: str):
 
 @app.post("/query_image")
 async def query_image(query_uri: str):
-    return {"llm_response": image_rag_pipeline([query_uri])}
+    return {"llm_response": unified_rag_pipeline([query_uri])}
 @app.get("/view")
 async def view():
     return {"descriptions": desc_collection.get()}
