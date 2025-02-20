@@ -42,11 +42,11 @@ def process_query(uploaded_file=None, text_query=None):
 
         if response.status_code == 200:
             file_path = response.json()['filepath']
-            return unified_rag_pipeline([file_path])
+            return unified_rag_pipeline(image_uris=[file_path], text_query=text_query)
         return [], "Could not process the uploaded image."
 
     if text_query:
-        return unified_rag_pipeline(text_query)
+        return unified_rag_pipeline(text_query=text_query)
 
     return [], "Please provide either text or image input"
 
@@ -109,7 +109,6 @@ def chat_interface():
 
         # Clear temporary file state
         st.session_state.current_file = None
-
 
 pg = st.navigation([st.Page(chat_interface, title="Chat"),
                     st.Page("gallery.py", title="Gallery"),

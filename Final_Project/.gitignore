@@ -3,3 +3,4 @@ __pycache__/
 /uploads/*
 /images
 /chroma_db
+/query_images

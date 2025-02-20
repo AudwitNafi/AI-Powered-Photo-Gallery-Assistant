@@ -138,64 +138,93 @@ def encode_image(uri):
         return None
 
 
-def unified_rag_pipeline(query, top_k=3):
+def unified_rag_pipeline(text_query=None, image_uris=None, top_k=3):
     """
-    Unified RAG pipeline that handles both text and image queries
+    Unified RAG pipeline handling text, image, and hybrid queries
     Returns tuple: (retrieved_uris, description)
     """
     retrieved_uris = []
     image_data = []
     prompt_text = ""
 
-    # Text-based search
-    if isinstance(query, str):
-        # Query description collection
-        desc_results = desc_collection.query(
-            query_texts=[query],
+    # Query logic for different input combinations
+    if text_query and image_uris:
+        # Combined text + image query
+        text_results = desc_collection.query(
+            query_texts=[text_query],
             n_results=top_k,
-            include=['metadatas', 'distances', 'documents']
+            include=['documents']
         )
-
-        # Get corresponding image URIs
-        image_ids = desc_results['ids'][0]
-        image_results = image_collection.get(
-            ids=image_ids,
+        image_results = image_collection.query(
+            query_uris=image_uris,
+            n_results=top_k,
             include=['uris']
         )
-        retrieved_uris = image_results['uris']
 
-        # Encode images
-        for uri in retrieved_uris:
-            encoded = encode_image(uri)
-            if encoded:
+        # Combine and deduplicate results
+        combined_uris = list({
+                                 uri: None for uri in
+                                 [u for uris in image_results['uris'] for u in uris] +
+                                 image_collection.get(ids=text_results['ids'][0])['uris']
+                             }.keys())[:top_k]
+
+        retrieved_uris = combined_uris
+        prompt_text = f"Describe how these images relate to both: '{text_query}' and the example images provided. Focus on:"
+
+    elif text_query:
+        # Text-only query
+        results = desc_collection.query(
+            query_texts=[text_query],
+            n_results=top_k,
+            include=['documents']
+        )
+        retrieved_uris = image_collection.get(
+            ids=results['ids'][0],
+            include=['uris']
+        )['uris']
+        prompt_text = f"Based on the query '{text_query}', describe these images:"
+
+    elif image_uris:
+        # Image-only query
+        results = image_collection.query(
+            query_uris=image_uris,
+            n_results=top_k,
+            include=['uris', 'distances']
+        )
+        retrieved_uris = [u for uris in results['uris'] for u in uris]
+        prompt_text = "Describe the similarity between the query images and these results:"
+
+        # Include query images in the context
+        for uri in image_uris:
+            if encoded := encode_image(uri):
                 image_data.append(encoded)
 
-        prompt_text = f"{query}\nDescribe these images concisely:"
+    else:
+        return [], "Please provide either text or image input"
 
-    # Image-based search
-    elif isinstance(query, list):
-        # Encode query images
-        query_images = [encode_image(uri) for uri in query]
-        query_images = [img for img in query_images if img]
+    # Encode retrieved images
+    for uri in retrieved_uris:
+        if encoded := encode_image(uri):
+            image_data.append(encoded)
 
-        # Query image collection
-        image_results = image_collection.query(
-            query_uris=query,
-            n_results=top_k,
-            include=['uris']
-        )
-        retrieved_uris = image_results['uris'][0]
-
-        # Encode retrieved images
-        result_images = [encode_image(uri) for uri in retrieved_uris]
-        result_images = [img for img in result_images if img]
-
-        image_data = query_images + result_images
-        prompt_text = "Describe similarities between the query images and retrieved results:"
-
-    # Generate response from Gemini
     if not image_data:
         return [], "No relevant images found"
 
+    # Generate dynamic prompt based on input type
+    if text_query and image_uris:
+        prompt_text += (
+            f"\n- Text query: {text_query}"
+            f"\n- Visual similarity to provided examples"
+            "\nHighlight both aspects in your description."
+        )
+    elif image_uris:
+        prompt_text += (
+            "\nFocus on visual elements like:"
+            "\n- Color schemes\n- Composition\n- Subjects\n- Style"
+        )
+
+    # Get LLM response
+    model = genai.GenerativeModel(os.getenv("GEMINI_MODEL"))
     response = model.generate_content([prompt_text] + image_data)
+
     return retrieved_uris, response.text
