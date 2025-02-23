@@ -1,20 +1,20 @@
 import glob
 from PIL import Image
-# import google.generativeai as genai
+import google.generativeai as genai
 from dotenv import load_dotenv
 import os
 import httpx
 import base64
-from google import genai
+# from google import genai
 
 load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
 MODEL = os.getenv("GEMINI_MODEL")
 
-client = genai.Client(api_key=API_KEY)
-
+genai.configure(api_key=API_KEY)
+model = genai.GenerativeModel("gemini-2.0-flash")
 # Create a chat session
-chat = client.chats.create(model=MODEL)
+# chat = model.start_chat()
 
 def get_gemini_response(user_input):
     """
@@ -22,7 +22,7 @@ def get_gemini_response(user_input):
     Maintains chat history for a contextual conversation.
     """
     try:
-        response = chat.send_message(user_input)
+        response = model.generate_content(user_input)
         return response.text  # Extract response text
     except Exception as e:
         return f"Error: {e}"

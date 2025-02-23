@@ -10,8 +10,14 @@ genai.configure(api_key=API_KEY)
 
 def generate_image_description(image_path):
   model = genai.GenerativeModel(model_name = MODEL)
-  prompt = "Describe this image concisely and in a detailed manner including objects, activities and settings. The description should be a single paragraph."
+  # prompt = "Describe this image concisely and in a detailed manner including objects, activities and settings. The description should be a single paragraph."
   image = Image.open(image_path)
-  response = model.generate_content([image, prompt])
-  print(response.text)
-  return response.text
+  # response = model.generate_content([image, prompt])
+  # print(response.text)
+  # return response.text
+  response = model.generate_content([
+    "Generate a detailed description and comma-separated tags for this image:",
+    image
+  ])
+  description = response.text
+  return description

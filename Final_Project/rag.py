@@ -107,7 +107,7 @@ import os
 import google.generativeai as genai
 from io import BytesIO
 from PIL import Image
-from chromadb_config import configure_db, get_images
+from utils.chromadb_config import configure_db, get_images
 from dotenv import load_dotenv
 
 image_collection, desc_collection = configure_db()
@@ -138,7 +138,7 @@ def encode_image(uri):
         return None
 
 
-def unified_rag_pipeline(text_query=None, image_uris=None, top_k=3):
+def unified_rag_pipeline(text_query=None, query_uris=None, top_k=3):
     """
     Unified RAG pipeline handling text, image, and hybrid queries
     Returns tuple: (retrieved_uris, description)
@@ -148,7 +148,7 @@ def unified_rag_pipeline(text_query=None, image_uris=None, top_k=3):
     prompt_text = ""
 
     # Query logic for different input combinations
-    if text_query and image_uris:
+    if text_query and query_uris:
         # Combined text + image query
         text_results = desc_collection.query(
             query_texts=[text_query],
@@ -156,7 +156,7 @@ def unified_rag_pipeline(text_query=None, image_uris=None, top_k=3):
             include=['documents']
         )
         image_results = image_collection.query(
-            query_uris=image_uris,
+            query_uris=query_uris,
             n_results=top_k,
             include=['uris']
         )
@@ -184,18 +184,19 @@ def unified_rag_pipeline(text_query=None, image_uris=None, top_k=3):
         )['uris']
         prompt_text = f"Based on the query '{text_query}', describe these images:"
 
-    elif image_uris:
+    elif query_uris:
         # Image-only query
         results = image_collection.query(
-            query_uris=image_uris,
+            query_uris=query_uris,
             n_results=top_k,
             include=['uris', 'distances']
         )
-        retrieved_uris = [u for uris in results['uris'] for u in uris]
+        # retrieved_uris = [u for uris in results['uris'] for u in uris]
+        retrieved_uris = results['uris'][0]
         prompt_text = "Describe the similarity between the query images and these results:"
 
         # Include query images in the context
-        for uri in image_uris:
+        for uri in query_uris:
             if encoded := encode_image(uri):
                 image_data.append(encoded)
 
@@ -211,20 +212,21 @@ def unified_rag_pipeline(text_query=None, image_uris=None, top_k=3):
         return [], "No relevant images found"
 
     # Generate dynamic prompt based on input type
-    if text_query and image_uris:
+    if text_query and query_uris:
         prompt_text += (
             f"\n- Text query: {text_query}"
             f"\n- Visual similarity to provided examples"
             "\nHighlight both aspects in your description."
         )
-    elif image_uris:
+    elif query_uris:
         prompt_text += (
             "\nFocus on visual elements like:"
             "\n- Color schemes\n- Composition\n- Subjects\n- Style"
         )
 
     # Get LLM response
-    model = genai.GenerativeModel(os.getenv("GEMINI_MODEL"))
+    # model = genai.GenerativeModel(os.getenv("GEMINI_MODEL"))
     response = model.generate_content([prompt_text] + image_data)
+    retrieved_uris = [f"http://localhost:8000/{filename}" for filename in retrieved_uris]
 
     return retrieved_uris, response.text

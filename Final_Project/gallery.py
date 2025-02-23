@@ -1,6 +1,6 @@
 # Gallery Page
 import streamlit as st
-from chromadb_config import get_images
+from Final_Project.utils.chromadb_config import get_images
 
 st.title("📸 Image Gallery")
 st.write("Browse all available images.")

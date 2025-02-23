@@ -12,19 +12,21 @@ image_loader = ImageLoader()
 
 def configure_db():
     # Initialize ChromaDB client
-    client = chromadb.PersistentClient(path='./chroma_db')
+    client = chromadb.PersistentClient(path='../chroma_db')
     # client = chromadb.Client()
     # Creating Image Collection
     image_collection = client.get_or_create_collection(
         # image_collection = client.create_collection(
         name='image',
         embedding_function=embedding_function,
-        data_loader=image_loader)
+        data_loader=image_loader,
+        metadata={"hnsw:space": "cosine"})
 
     # Defining Description Collection
     desc_collection = client.get_or_create_collection(
     # desc_collection = client.create_collection(
         name='image_descriptions',
+        metadata={"hnsw:space": "cosine"}
     )
     return image_collection, desc_collection
 
@@ -41,17 +43,19 @@ def get_images(folder_path):
 
 # image_collection.add(ids=ids, uris=image_uris)
 
-def add_image(image_path, image_collection):
+def add_image(image_path, image_collection, metadata):
     unique_id = str(uuid.uuid4())
     image_collection.add(
         uris = [image_path],
+        metadatas=[metadata],
         ids= [unique_id],
     )
     return unique_id
 
-def add_description(description, desc_collection, image_id):
+def add_description(description, desc_collection, image_id, metadata):
     desc_collection.add(
         documents = [description],
+        metadatas = [metadata],
         ids= [image_id],
     )
 
