@@ -1,7 +1,12 @@
 # import chromadb_config
+from typing import Optional
+
+from utils.query_parser import extract_keywords_from_image
 from gemini import get_gemini_response
 from utils.chromadb_config import add_image, add_description, configure_db
 from utils.generate_description import generate_image_description
+from utils.extract_date import split_date
+from utils.query_parser import extract_keywords, extract_keywords_from_image
 # from utils.upload_image import upload_image
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
@@ -46,31 +51,82 @@ async def root():
     print("API hit!")
     return {"message": "Hello World"}
 @app.post("/query")
-async def query(request: ChatRequest):
+async def query(message: str = Form(None)):
     try:
-        print(request)
-        retrieved_images, response = unified_rag_pipeline(text_query=request.message)
+        print(message)
+        retrieved_images, response = unified_rag_pipeline(text_query=message)
         print(retrieved_images)
         # print(response)
         return {"text": response, "images": retrieved_images}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# @app.post("/query-image")
+# async def query_image(file: UploadFile = File(...)):
+#     try:
+#         # if not query_image.content_type.startswith("image/"):
+#         #     raise HTTPException(status_code=400, detail="Only image files are allowed")
+#         file_location = QUERY_IMAGE_DIR / file.filename
+#         with open(file_location, "wb") as f:
+#             f.write(await file.read())
+#         retrieved_images, response = unified_rag_pipeline(query_uris=[file_location])
+#         return {"text": response, "images": retrieved_images}
+#         # return JSONResponse(content={"filename": file.filename, "url": f"/uploads/{file.filename}"})
+#     except:
+#         #Print the error
+#         traceback.print_exc()
+#         raise HTTPException(status_code=500, detail="Something went wrong")
 @app.post("/query-image")
-async def query_image(file: UploadFile = File(...)):
+async def query_hybrid(
+        file: Optional[UploadFile] = File(None),
+        message: Optional[str] = Form(None)
+):
     try:
-        # if not query_image.content_type.startswith("image/"):
-        #     raise HTTPException(status_code=400, detail="Only image files are allowed")
-        file_location = QUERY_IMAGE_DIR / file.filename
-        with open(file_location, "wb") as f:
-            f.write(await file.read())
-        retrieved_images, response = unified_rag_pipeline(query_uris=[file_location])
+        # Validate at least one input is provided
+        if not message and not file:
+            raise HTTPException(
+                status_code=400,
+                detail="At least one of text or image must be provided"
+            )
+
+        query_uris = []
+        text_query = None
+
+        # Process image if provided
+        if file:
+            if not file.content_type.startswith("image/"):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Only image files are allowed"
+                )
+
+            # Save uploaded image to temporary location
+            file_location = QUERY_IMAGE_DIR / file.filename
+            with open(file_location, "wb") as f:
+                content = await file.read()
+                f.write(content)
+            query_uris.append(str(file_location))
+
+        # Process text if provided
+        if message:
+            text_query = message.strip()
+
+        # Call unified RAG pipeline with both inputs
+        retrieved_images, response = unified_rag_pipeline(
+            text_query=text_query,
+            query_uris=query_uris if query_uris else None
+        )
+
         return {"text": response, "images": retrieved_images}
-        # return JSONResponse(content={"filename": file.filename, "url": f"/uploads/{file.filename}"})
-    except:
-        #Print the error
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail="Something went wrong")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error processing query: {str(e)}"
+        )
 @app.get("/view")
 async def view():
     return {"descriptions": desc_collection.get()}
@@ -82,17 +138,26 @@ async def upload(file: UploadFile = File(...),
     person_or_entity: str = Form(...)):
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Only image files are allowed")
-
+    year, month, day  = split_date(date)
     if file.size > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=400,
             detail="Image too large!"
         )
     print(f"user input data: {location}, {date}, {person_or_entity}")
+    # image_keywords = extract_keywords_from_image(file)
+    # objects, activities, scene, tags = image_keywords.values()
     metadata = {
         "location": location,
-        "date": date,
+        # "date": date,
+        "year": year,
+        "month": month,
+        "date": day,
         "person_or_entity": person_or_entity
+        # "objects": objects,
+        # "activities": activities,
+        # "scene": scene,
+        # "tags": tags,
     }
     file_path = UPLOAD_DIR / file.filename
     with file_path.open("wb") as buffer:
@@ -117,15 +182,17 @@ async def get_all_images():
     images = []
     upload_dir = "uploads"
 
+    results = image_collection.get(include=['metadatas'])
+
     # Example structure - modify according to your metadata storage
-    for filename in os.listdir(upload_dir):
+    for filename, metadata in zip(os.listdir(upload_dir), results['metadatas']):
         images.append({
             "id": filename.split('.')[0],  # Generate unique ID
             "filename": filename,
-            "title": "Sample Title",  # Replace with actual metadata
-            "date": "2023-01-01",  # Replace with actual date
-            "location": "Sample Location",  # Replace with actual location
-            "entities": ["Person 1", "Object 1"]  # Replace with actual entities
+            "title": filename.split('.')[0],  # Replace with actual metadata
+            "date": metadata['date'],  # Replace with actual date
+            "location": metadata['location'],  # Replace with actual location
+            "entities": metadata['person_or_entity']  # Replace with actual entities
         })
 
     return images

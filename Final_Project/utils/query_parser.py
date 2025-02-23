@@ -27,23 +27,21 @@ def extract_keywords(text):
         print("Error: Could not parse JSON response from Gemini.")
         return None
 
-def extract_keywords_from_image(image_path):
+def extract_keywords_from_image(image):
     """
     Extracts keywords from an image using the Gemini API.
     """
     model = genai.GenerativeModel("gemini-2.0-flash")
     prompt = f"""
-    Extract keywords from the following image, categorizing them into objects, activities, and scene:
-    Output format: (all in plain text without any extra formatting)
-    Objects: keyword1, keyword2, ... ; Activities: keyword1, keyword2, ...; Scene: keyword1, keyword2, ...
+    Extract keywords from the following image into objects, activities, scene and tags in to separate attributes.
+    Format your response as a JSON object. Just provide the JSON object
     """
     try:
-        image = Image.open(image_path)
         buffer = BytesIO()
         image.save(buffer, format="JPEG")
         image_bytes = buffer.getvalue()
         response = model.generate_content([{'mime_type':'image/jpeg', 'data': base64.b64encode(image_bytes).decode('utf-8')}, prompt])
         return response.text
     except Exception as e:
-        print(f"Error processing image {image_path}: {e}")
+        print(f"Error processing image: {e}")
         return None

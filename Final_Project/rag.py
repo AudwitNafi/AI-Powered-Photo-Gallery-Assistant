@@ -108,8 +108,8 @@ import google.generativeai as genai
 from io import BytesIO
 from PIL import Image
 from utils.chromadb_config import configure_db, get_images
+from utils.query_parser import extract_keywords, extract_keywords_from_image
 from dotenv import load_dotenv
-
 image_collection, desc_collection = configure_db()
 image_uris = sorted(get_images('uploads'))
 load_dotenv()
@@ -146,18 +146,27 @@ def unified_rag_pipeline(text_query=None, query_uris=None, top_k=3):
     retrieved_uris = []
     image_data = []
     prompt_text = ""
+    query_filter = []
+    metadata_count = 0
 
     # Query logic for different input combinations
     if text_query and query_uris:
         # Combined text + image query
+        keywords = extract_keywords(text_query)
+        for key in ['date', 'month', 'year', 'location']:
+            if key in keywords:
+                query_filter.append({key: keywords[key]})
+                metadata_count += 1
         text_results = desc_collection.query(
             query_texts=[text_query],
             n_results=top_k,
+            where=query_filter,
             include=['documents']
         )
         image_results = image_collection.query(
             query_uris=query_uris,
             n_results=top_k,
+            where=query_filter,
             include=['uris']
         )
 
@@ -169,9 +178,15 @@ def unified_rag_pipeline(text_query=None, query_uris=None, top_k=3):
                              }.keys())[:top_k]
 
         retrieved_uris = combined_uris
-        prompt_text = f"Describe how these images relate to both: '{text_query}' and the example images provided. Focus on:"
-
+        # prompt_text = f"Describe how these images relate to both: '{text_query}' and the example images provided. Focus on:"
+        prompt_text = "Combined results considering: "
+        prompt_text += f"\n- Text filters: {keywords}" if keywords else ""
     elif text_query:
+        keywords = extract_keywords(text_query)
+        for key in ['date', 'month', 'year', 'location']:
+            if key in keywords:
+                query_filter.append({key: keywords[key]})
+                metadata_count += 1
         # Text-only query
         results = desc_collection.query(
             query_texts=[text_query],

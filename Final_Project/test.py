@@ -27,8 +27,10 @@ image_collection, desc_collection = configure_db()
 # #     include=['uris']
 # # )
 # print(retrieved_uris)
-print(image_collection.get(include=['uris']))
+print(image_collection.get(include=['metadatas'])['metadatas'])
 # print(desc_collection.get(include=['documents']))
+# import os
+# print(os.listdir('./uploads'))
 
 # file_path = UPLOAD_DIR / file.filename
 

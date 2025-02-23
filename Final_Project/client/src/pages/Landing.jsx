@@ -1,6 +1,6 @@
 // import styled from "styled-components";
 import Wrapper from "../assets/wrappers/LandingPage";
-import main from "../assets/images/landing-page.jpg";
+import main from "../assets/images/meilleur-chatbot.jpg";
 import { Link } from "react-router-dom";
 import { Logo } from "../components";
 
@@ -13,20 +13,16 @@ function Landing() {
       <div className="container page">
         <div className="info">
           <h1>
-            Disaster <span>Management</span> Application
+            Conversational <span>Memory</span> Bot
           </h1>
           <p>
-            Welcome to the Disaster Management System, a comprehensive platform
-            dedicated to enhancing disaster response and relief efforts. Our
-            mission is to connect communities, volunteers, donors, and
-            administrators to work collaboratively in managing crises
-            efficiently and effectively.
+            Welcome to the Conversational Memory Bot, an AI-powered photo gallery assistant.  This is an AI-powered chatbot, designed to revolutionize the
+           way users interact with their personal photo galleries. By combining advanced Natural
+           Language Processing (NLP) and other frameworks, this system enables users to query,
+           retrieve, and explore their photos using natural language and visual features.
           </p>
-          <Link className="btn register-link" to="/register">
-            Register
-          </Link>
-          <Link className="btn" to="/login">
-            Login
+          <Link className="btn" to="/dashboard">
+            Get Started
           </Link>
         </div>
         <img src={main} alt="main" className="img main-img" />
