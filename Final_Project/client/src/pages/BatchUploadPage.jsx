@@ -63,7 +63,8 @@ const BatchUploadPage = () => {
 
   return (
     <div className="upload-container">
-      <h3>Upload Image with Metadata</h3>
+      <h3>Upload Images</h3>
+      <h5>(Max Size 5 MB)</h5>
       {/*<Link to="/dashboard/gallery" className="back-link">← Back to Gallery</Link>*/}
 
       <form onSubmit={handleSubmit} className="upload-form">
@@ -86,13 +87,12 @@ const BatchUploadPage = () => {
                 </button>
               </div>
             ) : (
-              <p>Drag & drop image here, or click to select</p>
+                <p><i>Drag & drop image here, or click to select</i></p>
             )}
           </div>
         </div>
 
         <div className="form-section">
-          <h4>Metadata</h4>
           <div className="form-group">
             <label>Person/Named Entity:</label>
             <input

@@ -56,26 +56,12 @@ async def query(message: str = Form(None)):
         print(message)
         retrieved_images, response = unified_rag_pipeline(text_query=message)
         print(retrieved_images)
-        # print(response)
+        print(response)
         return {"text": response, "images": retrieved_images}
     except Exception as e:
+        print(e)
         raise HTTPException(status_code=500, detail=str(e))
 
-# @app.post("/query-image")
-# async def query_image(file: UploadFile = File(...)):
-#     try:
-#         # if not query_image.content_type.startswith("image/"):
-#         #     raise HTTPException(status_code=400, detail="Only image files are allowed")
-#         file_location = QUERY_IMAGE_DIR / file.filename
-#         with open(file_location, "wb") as f:
-#             f.write(await file.read())
-#         retrieved_images, response = unified_rag_pipeline(query_uris=[file_location])
-#         return {"text": response, "images": retrieved_images}
-#         # return JSONResponse(content={"filename": file.filename, "url": f"/uploads/{file.filename}"})
-#     except:
-#         #Print the error
-#         traceback.print_exc()
-#         raise HTTPException(status_code=500, detail="Something went wrong")
 @app.post("/query-image")
 async def query_hybrid(
         file: Optional[UploadFile] = File(None),
@@ -145,25 +131,19 @@ async def upload(file: UploadFile = File(...),
             detail="Image too large!"
         )
     print(f"user input data: {location}, {date}, {person_or_entity}")
-    # image_keywords = extract_keywords_from_image(file)
-    # objects, activities, scene, tags = image_keywords.values()
     metadata = {
         "location": location,
-        # "date": date,
         "year": year,
         "month": month,
         "date": day,
         "person_or_entity": person_or_entity
-        # "objects": objects,
-        # "activities": activities,
-        # "scene": scene,
-        # "tags": tags,
     }
     file_path = UPLOAD_DIR / file.filename
     with file_path.open("wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     image_id = add_image(str(file_path), image_collection, metadata)
     description = generate_image_description(file_path)
+    # metadata['uri'] = str(file_path)
     add_description(description, desc_collection, image_id, metadata)
     # return {"filename": file.filename, "file_path": str(file_path)}
     return JSONResponse(content={"filename": file.filename, "url": f"/uploads/{file.filename}"})
@@ -182,32 +162,32 @@ async def get_all_images():
     images = []
     upload_dir = "uploads"
 
-    results = image_collection.get(include=['metadatas'])
-
+    results = image_collection.get(include=['metadatas', 'uris'])
+    image_paths = results["uris"]
+    image_details = results['metadatas'][0]
     # Example structure - modify according to your metadata storage
-    for filename, metadata in zip(os.listdir(upload_dir), results['metadatas']):
+    for filename, image_id, metadata in zip(image_paths, results['ids'], results['metadatas']):
         images.append({
-            "id": filename.split('.')[0],  # Generate unique ID
+            "id": image_id,
             "filename": filename,
-            "title": filename.split('.')[0],  # Replace with actual metadata
-            "date": metadata['date'],  # Replace with actual date
-            "location": metadata['location'],  # Replace with actual location
-            "entities": metadata['person_or_entity']  # Replace with actual entities
+            "title": filename.split('.')[0].split('\\')[1],  # Replace with actual metadata
+            "date": f"{metadata['month']}-{metadata['date']}-{metadata['year']}",  # Replace with actual date
         })
-
+    print(images)
     return images
 
 @app.get("/gallery/{image_id}")
 async def get_image_details(image_id: str):
     # Implement actual database lookup here
-    print(f"The id of image requested: {image_id}")
+    results = desc_collection.get(ids=[image_id], include=['documents', 'metadatas'])
+    image_details = results['metadatas'][0]
+    description = results['documents'][0]
+    # print(f"The id of image requested: {image_id}")
     return {
-        "id": image_id,
-        "filename": f"{image_id}.jpg",
-        "title": "Sample Title",
-        "date": "2023-01-01",
-        "location": "Sample Location",
-        "entities": ["Person 1", "Object 1"]
+        "description": description,
+        # "date": f"{image_details['month']}-{image_details['date']}-{image_details['year']}",
+        "location": image_details['location'],
+        "entities": image_details['person_or_entity']
     }
 
 # @app.post("/api/v1/chat")

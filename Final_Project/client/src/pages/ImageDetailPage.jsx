@@ -1,22 +1,27 @@
-// ImageDetailPage.jsx
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import ReactMarkdown from "react-markdown";
 import axios from 'axios';
 
 const ImageDetailPage = () => {
-  const { id } = useParams();
+  const { id } = useParams(); // Get the image ID from the URL
   const navigate = useNavigate();
-  const [image, setImage] = useState(null);
+  const location = useLocation()
+  const [details, setDetails] = useState(null);
+  const [image, setImage] = useState(location.state?.image);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchImageDetails = async () => {
       try {
+        // Fetch image details from the backend
         const response = await axios.get(`http://localhost:8000/gallery/${id}`);
-        setImage(response.data);
+        setDetails(response.data);
       } catch (error) {
         console.error('Error fetching image details:', error);
-        navigate('/gallery'); // Redirect if image not found
+        setError('Failed to load image details');
+        navigate('/gallery'); // Redirect to gallery if image not found
       } finally {
         setLoading(false);
       }
@@ -26,6 +31,8 @@ const ImageDetailPage = () => {
   }, [id, navigate]);
 
   if (loading) return <div className="loading">Loading image details...</div>;
+  if (error) return <div className="error">{error}</div>;
+  if (!image) return <div>Image not found</div>;
 
   return (
     <div className="image-detail-container">
@@ -35,7 +42,7 @@ const ImageDetailPage = () => {
 
       <div className="image-detail-content">
         <img
-          src={`http://localhost:8000/uploads/${image.filename}`}
+          src={`http://localhost:8000/${image.filename}`}
           alt={image.title || 'Gallery image'}
           className="enlarged-image"
         />
@@ -45,20 +52,16 @@ const ImageDetailPage = () => {
 
           <div className="metadata-section">
             <h4>Details</h4>
-            <p><strong>Date:</strong> {new Date(image.date).toLocaleDateString()}</p>
-            <p><strong>Location:</strong> {image.location || 'Unknown'}</p>
+            <p><strong>Date:</strong> {image.date}</p>
+            <p><strong>Location:</strong> {details.location || 'Unknown'}</p>
+            <p><strong>Description:</strong> <ReactMarkdown>{details.description || 'No description available'}</ReactMarkdown></p>
           </div>
-
-          {image.entities && image.entities.length > 0 && (
-            <div className="metadata-section">
-              <h4>People & Entities</h4>
-              <ul className="entities-list">
-                {image.entities.map((entity, index) => (
-                  <li key={index}>{entity}</li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <div className="metadata-section">
+            <h4>People & Entities</h4>
+            <ul className="entities-list">
+              {details.entities || 'None'}
+            </ul>
+          </div>
         </div>
       </div>
     </div>

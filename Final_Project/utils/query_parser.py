@@ -10,9 +10,11 @@ def extract_keywords(text):
     """
     model = genai.GenerativeModel("gemini-2.0-flash")
     prompt = f"""
-    Extract keywords from the following text, categorizing them into objects, activities, scene, date, month and year:
+    Extract keywords from the following text, categorizing them into location, date, month, year, person_or_entity and scene:
     Text: {text}
-    don't include the date or month or year attributes if no value found in the query
+    include only the attributes that are found in the query. leave empty if none found.
+    provide all values as string or integer, no lists.
+    person_or_entity is only singular noun.
     Format your response as a JSON object. Just provide the JSON object
     """
 

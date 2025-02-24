@@ -1,6 +1,18 @@
+from utils.query_parser import extract_keywords
 from utils.chromadb_config import configure_db
 image_collection, desc_collection = configure_db()
+import os
+
+import google.generativeai as genai
+from dotenv import load_dotenv
 #
+
+load_dotenv()
+API_KEY = os.getenv("GEMINI_API_KEY")
+MODEL = os.getenv("GEMINI_MODEL")
+
+genai.configure(api_key=API_KEY)
+# model = genai.GenerativeModel("gemini-2.0-flash")
 # print(get_images('./uploads'))
 
 # results = desc_collection.query(
@@ -27,11 +39,14 @@ image_collection, desc_collection = configure_db()
 # #     include=['uris']
 # # )
 # print(retrieved_uris)
-print(image_collection.get(include=['metadatas'])['metadatas'])
+# print(desc_collection.get(include=['metadatas', 'documents'], where={'person_or_entity': 'Cindy'})['ids'][0])
+# print(image_collection.get(include=['uris'])['uris'])
 # print(desc_collection.get(include=['documents']))
 # import os
 # print(os.listdir('./uploads'))
 
+
+print(extract_keywords('Show images of Dhaka'))
 # file_path = UPLOAD_DIR / file.filename
 
 # import chromadb

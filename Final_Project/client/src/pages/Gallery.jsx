@@ -3,6 +3,7 @@ import { Form, redirect, useLoaderData, useNavigation, Link } from "react-router
 import React, { useState, useEffect, createContext, useContext } from "react";
 import axios from "axios";
 
+
 function Gallery() {
 
 
@@ -20,7 +21,6 @@ function Gallery() {
         setLoading(false);
       }
     };
-
     fetchImages();
   }, []);
 
@@ -32,15 +32,15 @@ function Gallery() {
       <div className="image-grid">
         {images.map((image) => (
           <div key={image.id} className="image-card">
-            <Link to={`/dashboard/gallery/${image.id}`}>
+            <Link to={`/dashboard/gallery/${image.id}`} state={{ image }}>
               <img
-                src={`http://localhost:8000/uploads/${image.filename}`}
+                src={`http://localhost:8000/${image.filename}`}
                 alt={image.title || 'Gallery image'}
                 className="gallery-thumbnail"
               />
               <div className="image-info">
                 <h4>{image.title || 'Untitled'}</h4>
-                <p>{new Date(image.date).toLocaleDateString()}</p>
+                <p>{image.date}</p>
               </div>
             </Link>
           </div>
@@ -49,7 +49,5 @@ function Gallery() {
     </div>
   );
 }
-
-export const useAllCrisisContext = () => useContext(AllCrisisContext);
 
 export default Gallery;
