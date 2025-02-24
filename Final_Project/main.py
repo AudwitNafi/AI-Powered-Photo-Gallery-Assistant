@@ -1,5 +1,6 @@
 # import chromadb_config
-from typing import Optional
+import uuid
+from typing import Optional, List
 
 from utils.query_parser import extract_keywords_from_image
 from gemini import get_gemini_response
@@ -43,6 +44,7 @@ QUERY_IMAGE_DIR = Path("query_images")
 QUERY_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
 
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+MAX_FILES_PER_UPLOAD = 10
 
 class ChatRequest(BaseModel):
     message: str
@@ -117,36 +119,109 @@ async def query_hybrid(
 async def view():
     return {"descriptions": desc_collection.get()}
 
+# @app.post("/upload")
+# async def upload(file: UploadFile = File(...),
+#     location: str = Form(...),
+#     date: str = Form(...),
+#     person_or_entity: str = Form(...)):
+#     if not file.content_type.startswith("image/"):
+#         raise HTTPException(status_code=400, detail="Only image files are allowed")
+#     year, month, day  = split_date(date)
+#     if file.size > MAX_FILE_SIZE:
+#         raise HTTPException(
+#             status_code=400,
+#             detail="Image too large!"
+#         )
+#     print(f"user input data: {location}, {date}, {person_or_entity}")
+#     metadata = {
+#         "location": location,
+#         "year": year,
+#         "month": month,
+#         "date": day,
+#         "person_or_entity": person_or_entity
+#     }
+#     file_path = UPLOAD_DIR / file.filename
+#     with file_path.open("wb") as buffer:
+#         shutil.copyfileobj(file.file, buffer)
+#     image_id = add_image(str(file_path), image_collection, metadata)
+#     description = generate_image_description(file_path)
+#     metadata['id'] = image_id
+#     # metadata['uri'] = str(file_path)
+#     add_description(description, desc_collection, image_id, metadata)
+#     # return {"filename": file.filename, "file_path": str(file_path)}
+#     return JSONResponse(content={"filename": file.filename, "url": f"/uploads/{file.filename}"})
+
 @app.post("/upload")
-async def upload(file: UploadFile = File(...),
-    location: str = Form(...),
-    date: str = Form(...),
-    person_or_entity: str = Form(...)):
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Only image files are allowed")
-    year, month, day  = split_date(date)
-    if file.size > MAX_FILE_SIZE:
+async def upload(
+        files: List[UploadFile] = File(...),
+        location: str = Form(...),
+        date: str = Form(...),
+        person_or_entity: str = Form(...)
+):
+    # Validate file count
+    if len(files) > MAX_FILES_PER_UPLOAD:
         raise HTTPException(
             status_code=400,
-            detail="Image too large!"
+            detail=f"Maximum {MAX_FILES_PER_UPLOAD} files allowed per upload"
         )
-    print(f"user input data: {location}, {date}, {person_or_entity}")
-    metadata = {
-        "location": location,
-        "year": year,
-        "month": month,
-        "date": day,
-        "person_or_entity": person_or_entity
-    }
-    file_path = UPLOAD_DIR / file.filename
-    with file_path.open("wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    image_id = add_image(str(file_path), image_collection, metadata)
-    description = generate_image_description(file_path)
-    # metadata['uri'] = str(file_path)
-    add_description(description, desc_collection, image_id, metadata)
-    # return {"filename": file.filename, "file_path": str(file_path)}
-    return JSONResponse(content={"filename": file.filename, "url": f"/uploads/{file.filename}"})
+
+    # Validate date format
+    try:
+        year, month, day = split_date(date)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    responses = []
+    for file in files:
+        # Validate file type
+        if not file.content_type.startswith("image/"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"File {file.filename}: Only image files are allowed"
+            )
+
+        # Validate file size
+        if file.size > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File {file.filename}: Image too large (max {MAX_FILE_SIZE // 1024 // 1024}MB)"
+            )
+
+        # Generate unique filename to prevent overwrites
+        file_ext = file.filename.split('.')[-1]
+        unique_filename = f"{uuid.uuid4()}.{file_ext}"
+        file_path = UPLOAD_DIR / unique_filename
+
+        # Save file
+        try:
+            with file_path.open("wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to save {file.filename}: {str(e)}"
+            )
+
+        # Add to database
+        metadata = {
+            "location": location,
+            "year": year,
+            "month": month,
+            "date": day,
+            "person_or_entity": person_or_entity
+        }
+        image_id = add_image(str(file_path), image_collection, metadata)
+        description = generate_image_description(file_path)
+        metadata['id'] = image_id
+        add_description(description, desc_collection, image_id, metadata)
+
+        responses.append({
+            "original_name": file.filename,
+            "saved_name": unique_filename,
+            "url": f"/uploads/{unique_filename}"
+        })
+
+    return JSONResponse(content={"uploaded": responses})
 
 @app.post("/chat-upload")
 async def chat_upload(file: UploadFile = File(...)):

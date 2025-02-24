@@ -12,7 +12,7 @@ def extract_keywords(text):
     prompt = f"""
     Extract keywords from the following text, categorizing them into location, date, month, year, person_or_entity and scene:
     Text: {text}
-    include only the attributes that are found in the query. leave empty if none found.
+    include only the attributes that are found in the query. don't include if not found.
     provide all values as string or integer, no lists.
     person_or_entity is only singular noun.
     Format your response as a JSON object. Just provide the JSON object

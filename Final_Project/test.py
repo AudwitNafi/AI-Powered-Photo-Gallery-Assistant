@@ -46,9 +46,10 @@ genai.configure(api_key=API_KEY)
 # print(os.listdir('./uploads'))
 
 
-print(extract_keywords('Show images of Dhaka'))
+# print(extract_keywords('Show images of Dhaka'))
 # file_path = UPLOAD_DIR / file.filename
 
+# print(image_collection.get(where={"$and":[{"person_or_entity": "Ayush"},{"location":"Lalmatia"}]}))
 # import chromadb
 # client = chromadb.PersistentClient(path='./chroma_db')
 # # client.delete_collection('image')
@@ -56,4 +57,14 @@ print(extract_keywords('Show images of Dhaka'))
 # from gemini import get_gemini_response
 #
 # print(get_gemini_response('Hello Gemini!'))
+
+filtered_ids = ['989130a3-329d-4fac-aa77-51846c106e98', 'f5ae8d2f-f7bb-448e-8e1c-621b1e1802cb', 'ec8c2429-f612-4f59-a4b2-91c05468e2cf']
+
+results = desc_collection.query(
+    query_texts=['show images of Ayush'],
+    n_results=3,
+    where={"id": {"$in": filtered_ids}},       ##doesn't work
+    include=['metadatas', 'documents']
+)
+print(f"Filtered ids: {results['ids'][0]}")
 

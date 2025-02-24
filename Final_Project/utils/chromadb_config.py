@@ -45,6 +45,7 @@ def get_images(folder_path):
 
 def add_image(image_path, image_collection, metadata):
     unique_id = str(uuid.uuid4())
+    metadata['id'] = unique_id
     image_collection.add(
         uris = [image_path],
         metadatas=[metadata],

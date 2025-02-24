@@ -820,9 +820,6 @@ time,
   max-width: 600px;
   margin: 2rem auto;
   padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
 }
 
 .upload-form {
@@ -830,6 +827,23 @@ time,
   padding: 2rem;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.files-count {
+  margin-top: 1rem;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.uploaded-files {
+  margin-top: 1rem;
+}
+
+.uploaded-file {
+  padding: 0.5rem;
+  background: #e8f5e9;
+  margin: 0.25rem 0;
+  border-radius: 4px;
 }
 
 .form-section {
