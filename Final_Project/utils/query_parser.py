@@ -10,7 +10,7 @@ def extract_keywords(text):
     """
     model = genai.GenerativeModel("gemini-2.0-flash")
     prompt = f"""
-    Extract keywords from the following text, categorizing them into location, date, month, year, person_or_entity and scene:
+    Extract keywords from the following text, categorizing them into location, date, month, year, person_or_entity, color, event and scene:
     Text: {text}
     include only the attributes that are found in the query. don't include if not found.
     provide all values as string or integer, no lists.
@@ -35,15 +35,23 @@ def extract_keywords_from_image(image):
     """
     model = genai.GenerativeModel("gemini-2.0-flash")
     prompt = f"""
-    Extract keywords from the following image into objects, activities, scene and tags in to separate attributes.
-    Format your response as a JSON object. Just provide the JSON object
+    Extract keywords from the following image into object, color, activity, scene in to separate attributes.
+    Format your response as a JSON object. Just provide the JSON object. Each attribute should have a single value and 
+    be either a string. Don't include attribute whose value is not found.
     """
     try:
         buffer = BytesIO()
         image.save(buffer, format="JPEG")
         image_bytes = buffer.getvalue()
         response = model.generate_content([{'mime_type':'image/jpeg', 'data': base64.b64encode(image_bytes).decode('utf-8')}, prompt])
-        return response.text
+        clean_text = re.sub(r"```json|```", "", response.text).strip()
+        # print(clean_text)
+        try:
+            keywords = json.loads(clean_text)
+            return keywords
+        except json.JSONDecodeError:
+            print("Error: Could not parse JSON response from Gemini.")
+            return None
     except Exception as e:
         print(f"Error processing image: {e}")
         return None

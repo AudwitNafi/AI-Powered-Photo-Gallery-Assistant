@@ -23,6 +23,7 @@ describing images. Skip any preamble in your responses. Just provide the overall
 in a paragraph for the retrieved images.
 """)
 model = genai.GenerativeModel(MODEL, system_instruction=system_instruction)
+chat = model.start_chat()
 
 def determine_retrieval_intent(query: str) -> bool:
     """
@@ -38,7 +39,8 @@ def determine_retrieval_intent(query: str) -> bool:
     Respond ONLY with 'true' or 'false' in lowercase."""
 
     try:
-        response = model.generate_content(prompt)
+        # response = model.generate_content(prompt)
+        response = chat.send_message(prompt)
         return response.text.strip().lower() == 'true'
     except Exception as e:
         print(f"Error determining intent: {str(e)}")
@@ -152,7 +154,8 @@ def unified_rag_pipeline(text_query=None, query_uris=None, top_k=4):
             # metadata_count = 0
         elif text_query and query_uris:
             keywords = extract_keywords(text_query)
-            for key in ['date', 'month', 'year', 'location', 'person_or_entity']:
+            image_keywords = extract_keywords_from_image(query_uris)
+            for key in ['date', 'month', 'year', 'location', 'person_or_entity', 'color', 'event']:
                 if key in keywords:
                     query_filter.append({key: keywords[key]})
                     metadata_count += 1

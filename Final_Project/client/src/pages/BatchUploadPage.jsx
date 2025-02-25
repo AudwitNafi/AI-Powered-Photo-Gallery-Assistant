@@ -57,7 +57,7 @@ const BatchUploadPage = () => {
 
       setSuccess(response.data.uploaded);
       setFiles([]);
-      setMetadata({ person_entity: '', location: '', date: '' });
+      setMetadata({ person_entity: '', event: '', location: '', date: '' });
     } catch (err) {
       setError(err.response?.data?.detail || 'Upload failed');
     } finally {
@@ -115,6 +115,16 @@ const BatchUploadPage = () => {
               value={metadata.person_entity}
               onChange={(e) => setMetadata({...metadata, person_entity: e.target.value})}
               placeholder="Optional: Enter person/entity"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Event:</label>
+            <input
+              type="text"
+              value={metadata.event}
+              onChange={(e) => setMetadata({...metadata, event: e.target.value})}
+              placeholder="Optional: Enter Event Name"
             />
           </div>
 

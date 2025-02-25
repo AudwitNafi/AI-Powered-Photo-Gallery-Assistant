@@ -1,18 +1,20 @@
-from utils.query_parser import extract_keywords
+from utils.query_parser import extract_keywords, extract_keywords_from_image
+from PIL import Image
 from utils.chromadb_config import configure_db
+# from google import genai
 image_collection, desc_collection = configure_db()
 import os
 
-# import google.generativeai as genai
-# from dotenv import load_dotenv
-# #
+import google.generativeai as genai
+from dotenv import load_dotenv
 #
-# load_dotenv()
-# API_KEY = os.getenv("GEMINI_API_KEY")
-# MODEL = os.getenv("GEMINI_MODEL")
+
+load_dotenv()
+API_KEY = os.getenv("GEMINI_API_KEY")
+MODEL = os.getenv("GEMINI_MODEL")
 #
-# genai.configure(api_key=API_KEY)
-# model = genai.GenerativeModel("gemini-2.0-flash")
+genai.configure(api_key=API_KEY)
+model = genai.GenerativeModel("gemini-2.0-flash")
 # print(get_images('./uploads'))
 
 # results = desc_collection.query(
@@ -83,10 +85,17 @@ SIMILARITY_THRESHOLD = 0.5
 # filtered_results = [uri for uri, distance in zip(uris, distances) if distance <= SIMILARITY_THRESHOLD]
 #
 # print(filtered_results)
-
-desc_results = image_collection.query(
-    query_texts = "find images of people",
-    include=['distances', 'metadatas', 'uris']
+#
+desc_results = image_collection.get(
+    # query_texts = "find images of people",
+    include=['metadatas', 'uris']
 )
+# #
+print(desc_results['metadatas'])
+# image = Image.open('./uploads/0a104720-3d17-4089-8db2-c28b3f2afaee.jpg')
+# print(extract_keywords_from_image(image))
+# print(extract_keywords('Show images from my birthday party in 2021'))
 
-print(desc_results['uris'])
+# chat = model.start_chat()
+# response = chat.send_message("Good day fine chatbot")
+# print(response.text)

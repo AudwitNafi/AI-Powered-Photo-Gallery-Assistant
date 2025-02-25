@@ -26,7 +26,6 @@ const ImageDetailPage = () => {
         setLoading(false);
       }
     };
-
     fetchImageDetails();
   }, [id, navigate]);
 
