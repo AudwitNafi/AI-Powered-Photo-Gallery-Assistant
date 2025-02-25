@@ -14,7 +14,15 @@ load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
 MODEL = os.getenv("GEMINI_MODEL")
 
-system_instruction = "You are a photo gallery assistant. Your responses should assist in retrieving relevant images, describing images, or asking if users want relevant images based on their previous prompts."
+SIMILARITY_THRESHOLD = 0.8
+MIN_RESULTS = 1
+
+system_instruction = ("""
+You are a photo gallery assistant. Your responses should assist in retrieving relevant images, 
+describing images, or asking if users want relevant images based on their previous prompts. Skip any
+preamble in your responses. Just provide the overall descriptions in a paragraph for the retrieved 
+images.
+""")
 model = genai.GenerativeModel(MODEL, system_instruction=system_instruction)
 
 def determine_retrieval_intent(query: str) -> bool:
@@ -53,7 +61,6 @@ def encode_image(uri):
         print(f"Error encoding image {uri}: {str(e)}")
         return None
 
-
 def unified_rag_pipeline(text_query=None, query_uris=None, top_k=3):
     """
     Unified RAG pipeline handling text, image, and hybrid queries
@@ -63,150 +70,170 @@ def unified_rag_pipeline(text_query=None, query_uris=None, top_k=3):
     query_filter = []
     metadata_count = 0
     image_data = []
+    retrieved_uris = []
+    should_retrieve = False
 
     # Query logic for different input combinations
-    # text only query
-    if text_query:
-        keywords = extract_keywords(text_query)
-        print(f"keywords: {keywords}")
-        query_filter = []
-        metadata_count = 0
+    # At first, determine the user's intent
+    if text_query and not query_uris:
+        should_retrieve = determine_retrieval_intent(text_query)
+        if not should_retrieve:
+            # Handle non-image related queries
+            response = model.generate_content(text_query)
+            return [], response.text
 
-        for key in ['date', 'month', 'year', 'location', 'person_or_entity']:
-            if key in keywords:
-                query_filter.append({key: keywords[key]})
-                metadata_count += 1
-        print(f"metadata_count: {metadata_count}")
+    # If retrieval requested or query image provided
+    if should_retrieve or query_uris:
+        # text only query
+        if text_query and not query_uris:
+            keywords = extract_keywords(text_query)
+            print(f"keywords: {keywords}")
+            query_filter = []
+            metadata_count = 0
 
-        filtered_ids = []
-        if metadata_count > 0:
-            if metadata_count == 1:
-                query_filter = query_filter[0]
+            for key in ['date', 'month', 'year', 'location', 'person_or_entity']:
+                if key in keywords:
+                    query_filter.append({key: keywords[key]})
+                    metadata_count += 1
+            print(f"metadata_count: {metadata_count}")
+
+            filtered_ids = []
+            if metadata_count > 0:
+                if metadata_count == 1:
+                    query_filter = query_filter[0]
+                else:
+                    query_filter = {"$and": query_filter} if query_filter else {}
+
+                print(f"query_filter: {query_filter}")
+
+                # Filter images by metadata
+                filtered_images = image_collection.get(where=query_filter) #querying image collection
+                filtered_ids = filtered_images['ids']
+                print(f'filtered_ids: {filtered_ids}')
+
+            if filtered_ids:
+                # matching description with text for the filtered images
+                results = desc_collection.query(
+                    query_texts=[text_query],
+                    n_results=top_k,
+                    where={"id": {"$in": filtered_ids}},       ##doesn't work
+                    include=['distances', 'documents']
+                )
+                print(f"Filtered ids: {results['ids'][0]}")
+                prompt_text += f"Mention that images matching the provided filters/keywords have been found."
             else:
-                query_filter = {"$and": query_filter} if query_filter else {}
+                results = desc_collection.query(
+                    query_texts=[text_query],
+                    n_results=top_k,
+                    include=['distances', 'documents']
+                )
+                prompt_text += f"No images matching provided keywords/filters have been found. So you are giving similar images."
+                # print(f"Filtered ids 2: {results['ids'][0]}")
 
-            print(f"query_filter: {query_filter}")
+            # get the result ids
+            image_ids = results['ids'][0]
+            print(f"filtered image_ids based on desc match: {image_ids}")
+            # filtered_ids = image_ids['ids'] if image_ids else filtered_ids
+            image_results = image_collection.get(ids=image_ids, include=['uris'])  #querying image collection again to get the uris
+            distances = results['distances'][0]
+            descriptions = results['documents'][0]
+            retrieved_uris = image_results['uris']
+            # print(f"---retrieved_uris---: {retrieved_uris}")
 
-            # Filter images by metadata
-            filtered_images = image_collection.get(where=query_filter) #querying image collection
-            filtered_ids = filtered_images['ids']
-            print(f'filtered_ids: {filtered_ids}')
+            prompt_text += f"Based on the query '{text_query}', describe these images in a single paragraph, giving an overall description:"
+            # metadata_count = 0
+        elif text_query and query_uris:
+            keywords = extract_keywords(text_query)
+            for key in ['date', 'month', 'year', 'location', 'person_or_entity']:
+                if key in keywords:
+                    query_filter.append({key: keywords[key]})
+                    metadata_count += 1
+            filtered_ids = []
+            if metadata_count > 0:
+                if metadata_count == 1:
+                    query_filter = query_filter[0]
+                else:
+                    query_filter = {"$and": query_filter} if query_filter else {}
 
-        if filtered_ids:
-            # matching description with text for the filtered images
-            results = desc_collection.query(
-                query_texts=[text_query],
-                n_results=top_k,
-                where={"id": {"$in": filtered_ids}},       ##doesn't work
-                include=['distances', 'documents']
-            )
-            print(f"Filtered ids: {results['ids'][0]}")
-            prompt_text += f"Mention that images matching the provided filters/keywords have been found."
-        else:
-            results = desc_collection.query(
-                query_texts=[text_query],
-                n_results=top_k,
-                include=['distances', 'documents']
-            )
-            prompt_text += f"Mention that no images matching provided keywords/filters have been found. So you are giving similar images."
-            # print(f"Filtered ids 2: {results['ids'][0]}")
+                # fetching the images similar to given image that meet the text query filters
+                results = image_collection.query(
+                    query_uris=query_uris,
+                    n_results=top_k,
+                    where=query_filter,
+                    include=['uris', 'distances']
+                )
+                filtered_ids = results['ids'][0]
 
-        # get the result ids
-        image_ids = results['ids'][0]
-        print(f"filtered image_ids based on desc match: {image_ids}")
-        # filtered_ids = image_ids['ids'] if image_ids else filtered_ids
-        image_results = image_collection.get(ids=image_ids, include=['uris'])  #querying image collection again to get the uris
-        distances = results['distances'][0]
-        descriptions = results['documents'][0]
-        retrieved_uris = image_results['uris']
-
-        prompt_text += f"Based on the query '{text_query}', describe these images in a single paragraph, giving an overall description:"
-        # metadata_count = 0
-    elif text_query and query_uris:
-        keywords = extract_keywords(text_query)
-        for key in ['date', 'month', 'year', 'location', 'person_or_entity']:
-            if key in keywords:
-                query_filter.append({key: keywords[key]})
-                metadata_count += 1
-        filtered_ids = []
-        if metadata_count > 0:
-            if metadata_count == 1:
-                query_filter = query_filter[0]
+            if filtered_ids:
+                results = image_collection.query(
+                    query_uris = [query_uris],
+                    n_results = top_k,
+                    where = {"id": {"$in": filtered_ids}},
+                    include = ['distances', 'uris']
+                )
+                prompt_text += f"Mention that images matching the provided filters/keywords have been found."
             else:
-                query_filter = {"$and": query_filter} if query_filter else {}
+                results = image_collection.query(
+                    query_uris=[query_uris],
+                    n_results=top_k,
+                    include=['distances', 'uris']
+                )
+                prompt_text += f"Mention that no image matching the provided filters/keywords have been found."
+                # print(f"Filtered ids 2: {results['ids'][0]}")
 
-            # fetching the images similar to given image that meet the text query filters
+            retrieved_uris = results['uris'][0]
+            prompt_text += f"Describe the similarity in a paragraph between retrieved images and the uploaded image(first one). Focus on:"
+            for uri in query_uris:
+                if encoded := encode_image(uri):
+                    image_data.append(encoded)
+        elif query_uris:
+            # Image-only query
             results = image_collection.query(
                 query_uris=query_uris,
                 n_results=top_k,
-                where=query_filter,
                 include=['uris', 'distances']
             )
-            filtered_ids = results['ids'][0]
+            retrieved_uris = results['uris'][0]
+            prompt_text = "Describe the similarity between the query images and these results in a paragraph.:"
 
-        if filtered_ids:
-            results = image_collection.query(
-                query_uris = [query_uris],
-                n_results = top_k,
-                where = {"id": {"$in": filtered_ids}},
-                include = ['distances', 'uris']
-            )
-            prompt_text += f"Mention that images matching the provided filters/keywords have been found."
+            # Include query images in the context
+            for uri in query_uris:
+                if encoded := encode_image(uri):
+                    image_data.append(encoded)
         else:
-            results = image_collection.query(
-                query_uris=[query_uris],
-                n_results=top_k,
-                include=['distances', 'uris']
+            return [], "Please provide either text or image input"
+
+        # Encode retrieved images
+        for uri in retrieved_uris:
+            if encoded := encode_image(uri):
+                image_data.append(encoded)
+
+        if not image_data:
+            return [], "No relevant images found"
+
+        # Generate dynamic prompt based on input type
+        if text_query and query_uris:
+            prompt_text += (
+                f"\n- Text query: {text_query}"
+                f"\n- Visual similarity to provided examples"
+                "\nHighlight both aspects in your description."
             )
-            prompt_text += f"Mention that no image matching the provided filters/keywords have been found."
-            # print(f"Filtered ids 2: {results['ids'][0]}")
+        elif query_uris:
+            prompt_text += (
+                "\nFocus on visual elements like:"
+                "\n- Color schemes\n- Composition\n- Subjects\n- Style"
+            )
 
-        retrieved_uris = results['uris'][0]
-        prompt_text += f"Describe the similarity in a paragraph between retrieved images and the uploaded image(first one). Focus on:"
-        for uri in query_uris:
-            if encoded := encode_image(uri):
-                image_data.append(encoded)
-    elif query_uris:
-        # Image-only query
-        results = image_collection.query(
-            query_uris=query_uris,
-            n_results=top_k,
-            include=['uris', 'distances']
-        )
-        retrieved_uris = results['uris'][0]
-        prompt_text = "Describe the similarity between the query images and these results in a paragraph.:"
+    # If no images retrieved but retrieval was attempted
+    if (should_retrieve or query_uris) and not retrieved_uris:
+        prompt_text += "\nNo relevant images found in the gallery. "
 
-        # Include query images in the context
-        for uri in query_uris:
-            if encoded := encode_image(uri):
-                image_data.append(encoded)
+    # Final response generation
+    if retrieved_uris:
+        response = model.generate_content([prompt_text] + image_data)
+        retrieved_uris = [f"http://localhost:8000/{filename}" for filename in retrieved_uris]
+        print(f'retrieved_uris: {retrieved_uris}')
     else:
-        return [], "Please provide either text or image input"
+        response = model.generate_content(prompt_text or text_query)
 
-    # Encode retrieved images
-    for uri in retrieved_uris:
-        if encoded := encode_image(uri):
-            image_data.append(encoded)
-
-    if not image_data:
-        return [], "No relevant images found"
-
-    # Generate dynamic prompt based on input type
-    if text_query and query_uris:
-        prompt_text += (
-            f"\n- Text query: {text_query}"
-            f"\n- Visual similarity to provided examples"
-            "\nHighlight both aspects in your description."
-        )
-    elif query_uris:
-        prompt_text += (
-            "\nFocus on visual elements like:"
-            "\n- Color schemes\n- Composition\n- Subjects\n- Style"
-        )
-
-    # Get LLM response
-    # model = genai.GenerativeModel(os.getenv("GEMINI_MODEL"))
-    response = model.generate_content([prompt_text] + image_data)
-    retrieved_uris = [f"http://localhost:8000/{filename}" for filename in retrieved_uris]
-    print(f'retrieved_uris: {retrieved_uris}')
     return retrieved_uris, response.text
