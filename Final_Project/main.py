@@ -152,76 +152,85 @@ async def view():
 #     return JSONResponse(content={"filename": file.filename, "url": f"/uploads/{file.filename}"})
 
 @app.post("/upload")
-async def upload(
-        files: List[UploadFile] = File(...),
-        location: str = Form(...),
-        date: str = Form(...),
-        person_or_entity: str = Form(...)
+async def batch_upload(
+    files: List[UploadFile] = File(...),
+    location: Optional[str] = Form(None),
+    date: Optional[str] = Form(None),
+    person_or_entity: Optional[str] = Form(None),
 ):
-    # Validate file count
+    # Validate file inputs
     if len(files) > MAX_FILES_PER_UPLOAD:
         raise HTTPException(
             status_code=400,
             detail=f"Maximum {MAX_FILES_PER_UPLOAD} files allowed per upload"
         )
 
-    # Validate date format
-    try:
+    year, month, day = None, None, None
+    # Process date metadata
+    if date:
         year, month, day = split_date(date)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
 
-    responses = []
+    uploaded_files = []
     for file in files:
-        # Validate file type
-        if not file.content_type.startswith("image/"):
-            raise HTTPException(
-                status_code=400,
-                detail=f"File {file.filename}: Only image files are allowed"
-            )
-
-        # Validate file size
-        if file.size > MAX_FILE_SIZE:
-            raise HTTPException(
-                status_code=400,
-                detail=f"File {file.filename}: Image too large (max {MAX_FILE_SIZE // 1024 // 1024}MB)"
-            )
-
-        # Generate unique filename to prevent overwrites
-        file_ext = file.filename.split('.')[-1]
-        unique_filename = f"{uuid.uuid4()}.{file_ext}"
-        file_path = UPLOAD_DIR / unique_filename
-
-        # Save file
         try:
+            # Validate file type
+            if not file.content_type.startswith("image/"):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"File {file.filename}: Only image files are allowed"
+                )
+
+            # Validate file size
+            if file.size > MAX_FILE_SIZE:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"File {file.filename}: Exceeds size limit ({MAX_FILE_SIZE//1024//1024}MB)"
+                )
+
+            # Generate unique filename
+            file_ext = file.filename.split('.')[-1]
+            unique_filename = f"{uuid.uuid4()}.{file_ext}"
+            file_path = UPLOAD_DIR / unique_filename
+
+            # Save file
             with file_path.open("wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
+
+            # Prepare metadata
+            data = {
+                "location": location,
+                "year": year,
+                "month": month,
+                "day": day,
+                "person_or_entity": person_or_entity,
+            }
+            metadata = {k: v for k, v in data.items() if v is not None}
+
+            # Add to database
+            image_id = add_image(str(file_path), image_collection, metadata)
+            description = generate_image_description(file_path)
+            metadata['id'] = image_id
+            add_description(description, desc_collection, image_id, metadata)
+
+            uploaded_files.append({
+                "original_name": file.filename,
+                "saved_name": unique_filename,
+                "url": f"/uploads/{unique_filename}",
+                "metadata": metadata
+            })
+
+        except HTTPException as e:
+            raise e
         except Exception as e:
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to save {file.filename}: {str(e)}"
+                detail=f"Failed to process {file.filename}: {str(e)}"
             )
 
-        # Add to database
-        metadata = {
-            "location": location,
-            "year": year,
-            "month": month,
-            "date": day,
-            "person_or_entity": person_or_entity
-        }
-        image_id = add_image(str(file_path), image_collection, metadata)
-        description = generate_image_description(file_path)
-        metadata['id'] = image_id
-        add_description(description, desc_collection, image_id, metadata)
-
-        responses.append({
-            "original_name": file.filename,
-            "saved_name": unique_filename,
-            "url": f"/uploads/{unique_filename}"
-        })
-
-    return JSONResponse(content={"uploaded": responses})
+    return JSONResponse(content={
+        "uploaded": uploaded_files,
+        "message": f"Successfully uploaded {len(uploaded_files)} files"
+    })
 
 @app.post("/chat-upload")
 async def chat_upload(file: UploadFile = File(...)):
@@ -242,13 +251,16 @@ async def get_all_images():
     image_details = results['metadatas'][0]
     # Example structure - modify according to your metadata storage
     for filename, image_id, metadata in zip(image_paths, results['ids'], results['metadatas']):
+        date = ""
+        if 'month' and 'day' and 'year' in metadata:
+            date = f"{metadata['month']}-{metadata['day']}-{metadata['year']}"
         images.append({
             "id": image_id,
             "filename": filename,
             "title": filename.split('.')[0].split('\\')[1],  # Replace with actual metadata
-            "date": f"{metadata['month']}-{metadata['date']}-{metadata['year']}",  # Replace with actual date
+            "date": date if date else None,  # Replace with actual date
         })
-    print(images)
+    # print(images)
     return images
 
 @app.get("/gallery/{image_id}")
@@ -256,33 +268,16 @@ async def get_image_details(image_id: str):
     # Implement actual database lookup here
     results = desc_collection.get(ids=[image_id], include=['documents', 'metadatas'])
     image_details = results['metadatas'][0]
+    location, entities = None, None
+    if 'location' in image_details:
+        location = image_details['location']
+    if entities in image_details:
+        entities = image_details['person_or_entity']
     description = results['documents'][0]
     # print(f"The id of image requested: {image_id}")
     return {
         "description": description,
         # "date": f"{image_details['month']}-{image_details['date']}-{image_details['year']}",
-        "location": image_details['location'],
-        "entities": image_details['person_or_entity']
+        "location": location,
+        "entities": entities
     }
-
-# @app.post("/api/v1/chat")
-# async def handle_chat(data: ChatRequest):
-#     try:
-#         # Process text query
-#         print('text query api hit!')
-#         print("\n🔹 Received request data:", data.message)  # Print the request data
-#         # retrieved_images, response = unified_rag_pipeline(message)
-#         response = get_gemini_response(data.message)
-#         return {
-#             "text": response
-#         }
-#     except Exception as e:
-#         print("\n❌ General Error:", str(e))  # Print general errors
-#         raise HTTPException(status_code=400, detail="Invalid request format")
-# @app.post("/api/v1/chat-upload")
-# async def handle_upload(image: UploadFile):
-#     # Process image query
-#     return {
-#         "text": "Image analysis results",
-#         "results": [...]  # Your search results
-#     }

@@ -527,14 +527,16 @@ time,
 }
 
 .user {
-  background-color: #007bff;
+  /*background-color: #007bff;*/
+  background-color: var(--green-dark);
   color: white;
   margin-left: auto;
   border-bottom-right-radius: 0.5rem;
 }
 
 .bot {
-  background-color: #f1f1f1;
+  /*background-color: #f1f1f1;*/
+  background-color: var(--red-light);
   color: #333;
   margin-right: auto;
   border-bottom-left-radius: 0.5rem;
@@ -632,7 +634,8 @@ time,
 
 .input-container button {
   padding: 0.75rem 1.5rem;
-  background-color: #007bff;
+  /*background-color: #007bff;*/
+  background-color: var(--primary-500);
   color: white;
   border: none;
   border-radius: 1.5rem;

@@ -17,6 +17,25 @@ MODEL = os.getenv("GEMINI_MODEL")
 system_instruction = "You are a photo gallery assistant. Your responses should assist in retrieving relevant images, describing images, or asking if users want relevant images based on their previous prompts."
 model = genai.GenerativeModel(MODEL, system_instruction=system_instruction)
 
+def determine_retrieval_intent(query: str) -> bool:
+    """
+    Use LLM to determine if image retrieval is needed
+    Returns True if images should be retrieved, False otherwise
+    """
+    prompt = f"""Analyze this query and decide if it requires image retrieval. 
+    Return 'true' if the user is asking to see, show, find, or get images/photos/pictures.
+    Return 'false' for general questions or non-visual requests.
+
+    Query: {query}
+
+    Respond ONLY with 'true' or 'false' in lowercase."""
+
+    try:
+        response = model.generate_content(prompt)
+        return response.text.strip().lower() == 'true'
+    except Exception as e:
+        print(f"Error determining intent: {str(e)}")
+        return False  # Fallback to no retrieval
 
 def encode_image(uri):
     """Helper function to encode images for Gemini API"""
@@ -40,17 +59,13 @@ def unified_rag_pipeline(text_query=None, query_uris=None, top_k=3):
     Unified RAG pipeline handling text, image, and hybrid queries
     Returns tuple: (retrieved_uris, description)
     """
-    retrieved_uris = []
-    image_data = []
     prompt_text = ""
     query_filter = []
     metadata_count = 0
-
-    # text only query
-    retrieved_images = []
     image_data = []
 
     # Query logic for different input combinations
+    # text only query
     if text_query:
         keywords = extract_keywords(text_query)
         print(f"keywords: {keywords}")
@@ -62,22 +77,7 @@ def unified_rag_pipeline(text_query=None, query_uris=None, top_k=3):
                 query_filter.append({key: keywords[key]})
                 metadata_count += 1
         print(f"metadata_count: {metadata_count}")
-        # if metadata_count == 0:
-        #     results = desc_collection.query(
-        #         query_texts=[text_query],
-        #         n_results=top_k,
-        #         include=['distances', 'documents', 'metadatas']
-        #     )
-        #
-        #     # Getting the ids of the matched descriptions
-        #     image_ids = results['ids'][0]
-        #     # distances = results['distances'][0]
-        #     descriptions = results['documents'][0]
-        #
-        #     image_results = image_collection.get(ids=image_ids, include=['uris'])
-        #     retrieved_uris = image_results['uris']
 
-        # else:
         filtered_ids = []
         if metadata_count > 0:
             if metadata_count == 1:
@@ -91,8 +91,7 @@ def unified_rag_pipeline(text_query=None, query_uris=None, top_k=3):
             filtered_images = image_collection.get(where=query_filter) #querying image collection
             filtered_ids = filtered_images['ids']
             print(f'filtered_ids: {filtered_ids}')
-            # if not filtered_ids:
-            #     return [], "No images found matching your query."
+
         if filtered_ids:
             # matching description with text for the filtered images
             results = desc_collection.query(
@@ -144,8 +143,7 @@ def unified_rag_pipeline(text_query=None, query_uris=None, top_k=3):
                 include=['uris', 'distances']
             )
             filtered_ids = results['ids'][0]
-            # if not filtered_ids:
-            #     return [], "No images found matching your query."
+
         if filtered_ids:
             results = image_collection.query(
                 query_uris = [query_uris],

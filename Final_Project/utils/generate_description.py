@@ -15,8 +15,14 @@ def generate_image_description(image_path):
   # response = model.generate_content([image, prompt])
   # print(response.text)
   # return response.text
+  prompt = """
+  Generate a detailed concise description in a single paragraph and comma-separated tags under it for this image. 
+  Maintain the following format:
+  Description (bold): (...)
+  Tags (bold): tag1, tag2, ...
+  """
   response = model.generate_content([
-    "Generate a detailed description and comma-separated tags for this image:",
+    prompt,
     image
   ])
   description = response.text

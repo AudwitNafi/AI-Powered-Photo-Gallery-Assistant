@@ -54,7 +54,7 @@ const ImageDetailPage = () => {
             <h4>Details</h4>
             <p><strong>Date:</strong> {image.date}</p>
             <p><strong>Location:</strong> {details.location || 'Unknown'}</p>
-            <p><strong>Description:</strong> <ReactMarkdown>{details.description || 'No description available'}</ReactMarkdown></p>
+            <p><ReactMarkdown>{details.description || 'No description available'}</ReactMarkdown></p>
           </div>
           <div className="metadata-section">
             <h4>People & Entities</h4>
