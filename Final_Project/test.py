@@ -3,15 +3,15 @@ from utils.chromadb_config import configure_db
 image_collection, desc_collection = configure_db()
 import os
 
-import google.generativeai as genai
-from dotenv import load_dotenv
+# import google.generativeai as genai
+# from dotenv import load_dotenv
+# #
 #
-
-load_dotenv()
-API_KEY = os.getenv("GEMINI_API_KEY")
-MODEL = os.getenv("GEMINI_MODEL")
-
-genai.configure(api_key=API_KEY)
+# load_dotenv()
+# API_KEY = os.getenv("GEMINI_API_KEY")
+# MODEL = os.getenv("GEMINI_MODEL")
+#
+# genai.configure(api_key=API_KEY)
 # model = genai.GenerativeModel("gemini-2.0-flash")
 # print(get_images('./uploads'))
 
@@ -70,4 +70,23 @@ genai.configure(api_key=API_KEY)
 
 # print(image_collection.count())
 
-print(image_collection.get(include=['uris', 'metadatas']))
+# print(image_collection.get(include=['uris', 'metadatas']))
+# results = image_collection.query(
+#     query_uris=['D:\Audwit_Anam_YSD_Repo\YSD_B4_AI_Audwit\Final_Project\query_images\e5.jpg'],
+#     include=['distances', 'metadatas', 'uris']
+# )
+
+SIMILARITY_THRESHOLD = 0.5
+# ids = results['ids'][0]
+# distances = results['distances'][0]
+# uris = results['uris'][0]
+# filtered_results = [uri for uri, distance in zip(uris, distances) if distance <= SIMILARITY_THRESHOLD]
+#
+# print(filtered_results)
+
+desc_results = image_collection.query(
+    query_texts = "find images of people",
+    include=['distances', 'metadatas', 'uris']
+)
+
+print(desc_results['uris'])

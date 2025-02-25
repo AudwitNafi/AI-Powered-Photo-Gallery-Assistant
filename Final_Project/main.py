@@ -69,6 +69,7 @@ async def query_hybrid(
         file: Optional[UploadFile] = File(None),
         message: Optional[str] = Form(None)
 ):
+    file_location = None  # Track the file path for cleanup
     try:
         # Validate at least one input is provided
         if not message and not file:
@@ -115,6 +116,14 @@ async def query_hybrid(
             status_code=500,
             detail=f"Error processing query: {str(e)}"
         )
+    finally:
+        # Clean up the query image file if it exists
+        if file_location and file_location.exists():
+            try:
+                os.remove(file_location)
+                print(f"Deleted query image: {file_location}")
+            except Exception as e:
+                print(f"Error deleting query image: {str(e)}")
 @app.get("/view")
 async def view():
     return {"descriptions": desc_collection.get()}

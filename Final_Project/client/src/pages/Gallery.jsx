@@ -39,7 +39,7 @@ function Gallery() {
                 className="gallery-thumbnail"
               />
               <div className="image-info">
-                <h4>{image.title || 'Untitled'}</h4>
+                <p>{image.title || 'Untitled'}</p>
                 <p>{image.date}</p>
               </div>
             </Link>

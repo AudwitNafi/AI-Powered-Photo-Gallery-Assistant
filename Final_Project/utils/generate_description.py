@@ -20,6 +20,7 @@ def generate_image_description(image_path):
   Maintain the following format:
   Description (bold): (...)
   Tags (bold): tag1, tag2, ...
+  No other content except these two sections (Description and Tags)
   """
   response = model.generate_content([
     prompt,
