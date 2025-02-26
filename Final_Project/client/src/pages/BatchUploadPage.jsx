@@ -107,7 +107,7 @@ const BatchUploadPage = () => {
         </div>
 
         <div className="form-section">
-          <h4>Optional Metadata</h4>
+          <h5>Additional Information (Optional)</h5>
           <div className="form-group">
             <label>Person/Named Entity:</label>
             <input

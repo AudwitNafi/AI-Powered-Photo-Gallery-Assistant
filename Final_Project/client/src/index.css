@@ -954,6 +954,7 @@ time,
   position: relative;
   margin-bottom: 0.5rem;
   max-width: 150px;
+  max-height: 50px;
 }
 
 .attached-preview {

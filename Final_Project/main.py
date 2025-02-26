@@ -4,9 +4,7 @@ from typing import Optional, List
 
 from PIL import Image
 
-from utils.query_parser import extract_keywords_from_image
-from gemini import get_gemini_response
-from utils.chromadb_config import add_image, add_description, configure_db
+from utils.chromadb_config import add_image, configure_db
 from utils.generate_description import generate_image_description
 from utils.extract_date import split_date
 from utils.query_parser import extract_keywords, extract_keywords_from_image
@@ -26,7 +24,7 @@ import os
 import traceback
 
 
-image_collection, desc_collection = configure_db()
+image_collection = configure_db()
 app = FastAPI()
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
@@ -146,7 +144,6 @@ async def batch_upload(
         )
 
     year, month, day = None, None, None
-    # Process date metadata
     if date:
         year, month, day = split_date(date)
 
@@ -175,8 +172,13 @@ async def batch_upload(
             # Save file
             with file_path.open("wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
+            image = Image.open(file_path)
+            image_keywords = extract_keywords_from_image(image)
+            print(f"image_keywords: {image_keywords}")
+            for keyword in ['color', 'object', 'activity', 'scene']:
+                if keyword not in image_keywords:
+                    image_keywords[keyword] = None
 
-            image_keywords = extract_keywords_from_image(Image.open(file_path))
             # Prepare metadata
             data = {
                 "location": location,
@@ -191,13 +193,9 @@ async def batch_upload(
                 "scene": image_keywords['scene'],
             }
             metadata = {k: v for k, v in data.items() if v is not None}
-
             # Add to database
-            image_id = add_image(str(file_path), image_collection, metadata)
-            description = generate_image_description(file_path)
-            metadata['id'] = image_id
-            add_description(description, desc_collection, image_id, metadata)
-
+            metadata["description"] = generate_image_description(image)
+            add_image(str(file_path), image_collection, metadata)
             uploaded_files.append({
                 "original_name": file.filename,
                 "saved_name": unique_filename,
@@ -252,7 +250,7 @@ async def get_all_images():
 @app.get("/gallery/{image_id}")
 async def get_image_details(image_id: str):
     # Implement actual database lookup here
-    results = desc_collection.get(ids=[image_id], include=['documents', 'metadatas'])
+    results = image_collection.get(ids=[image_id], include=['metadatas'])
 
     image_details = results['metadatas'][0]
     location, entities = None, None
@@ -260,7 +258,7 @@ async def get_image_details(image_id: str):
         location = image_details['location']
     if 'person_or_entity' in image_details:
         entities = image_details['person_or_entity']
-    description = results['documents'][0]
+    description = image_details['description']
     # print(f"The id of image requested: {image_id}")
     return {
         "description": description,

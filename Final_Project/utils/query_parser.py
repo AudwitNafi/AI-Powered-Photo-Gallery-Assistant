@@ -55,3 +55,22 @@ def extract_keywords_from_image(image):
     except Exception as e:
         print(f"Error processing image: {e}")
         return None
+
+def determine_requested_attribute(text):
+    """
+    Determines the requested attribute from a given text.
+    """
+    model = genai.GenerativeModel("gemini-2.0-flash")
+    prompt = f"""
+    Find which attribute(s) among [color, activity, scene, object] is requested in the given text query:
+    Text: {text}
+    Format your response as a python list in json format. Just provide the JSON Object. Don't include attribute that are not found.
+    """
+    try:
+        response = model.generate_content(prompt)
+        clean_text = re.sub(r"```json|```", "", response.text).strip()
+        attributes = json.loads(clean_text)
+        return attributes
+    except json.JSONDecodeError:
+        print("Error: Could not parse response from Gemini.")
+        return None
