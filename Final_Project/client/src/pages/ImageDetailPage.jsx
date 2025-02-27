@@ -47,10 +47,8 @@ const ImageDetailPage = () => {
         />
 
         <div className="image-metadata">
-          <h3>{image.title || 'Untitled'}</h3>
-
           <div className="metadata-section">
-            <h4>Details</h4>
+            <h3>Details</h3>
             <p><strong>Date:</strong> {image.date}</p>
             <p><strong>Location:</strong> {details.location || 'Unknown'}</p>
             <p><ReactMarkdown>{details.description || 'No description available'}</ReactMarkdown></p>

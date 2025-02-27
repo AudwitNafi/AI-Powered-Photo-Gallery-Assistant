@@ -5,6 +5,9 @@ from io import BytesIO
 from config.constants import MODEL
 from config.llm_instantiation import load_gemini_model
 
+from config.constants import DETERMINE_INTENT_PROMPT
+
+
 def extract_keywords(text):
     """
     Extracts keywords from a given text query.

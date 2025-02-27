@@ -1,6 +1,6 @@
 __pycache__/
 .env
-/uploads/*
+/static/uploads/*
 /images
 /chroma_db
-/query_images
+/static/query_images

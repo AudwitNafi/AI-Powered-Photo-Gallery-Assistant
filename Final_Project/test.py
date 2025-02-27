@@ -1,19 +1,22 @@
 from PIL import Image
-from db.chromadb_config import configure_db
+from config.chromadb_config import image_collection
 from utils.query_parser import extract_keywords, extract_keywords_from_image, determine_requested_attribute
-image_collection = configure_db()
+# from config.constants import DETERMINE_INTENT_PROMPT
+# text_query = "how are you?"
+# print(f"\n{DETERMINE_INTENT_PROMPT.format(query=text_query)}")
+
 import os
 import google.generativeai as genai
 from dotenv import load_dotenv
 # from utils.generate_description import generate_image_caption
 # from Final_Project.config.llm_instantiation import load_gemini_model
-load_dotenv()
-API_KEY = os.getenv("GEMINI_API_KEY")
-MODEL = os.getenv("GEMINI_MODEL")
-#
-genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel("gemini-2.0-flash")
-SIMILARITY_THRESHOLD = 0.5
+# load_dotenv()
+# API_KEY = os.getenv("GEMINI_API_KEY")
+# MODEL = os.getenv("GEMINI_MODEL")
+# #
+# genai.configure(api_key=API_KEY)
+# model = genai.GenerativeModel("gemini-2.0-flash")
+# SIMILARITY_THRESHOLD = 0.5
 # print(get_images('./uploads'))
 
 # results = desc_collection.query(
@@ -24,9 +27,8 @@ SIMILARITY_THRESHOLD = 0.5
 # # print(results['ids'][0])
 # ids = results['ids'][0]
 #
-# img_results = image_collection.get(
-#     ids=ids,
-# )
+# img_results = image_collection.get(include=['uris'])
+# print(img_results['uris'])
 
 # img_results = image_collection.query(
 #     query_texts=["images of cats"],
@@ -89,9 +91,9 @@ desc_results = image_collection.query(
     include=['metadatas', 'distances']
 )
 print(desc_results['distances'])
-descriptions = [metadata['description'] for metadata in desc_results['metadatas'][0]]
-print(descriptions)
-# # #
+# descriptions = [metadata['description'] for metadata in desc_results['metadatas'][0]]
+# print(descriptions)
+# # # #
 # print(desc_results['metadatas'])
 # image = Image.open('./uploads/07395ee3-b6be-4511-9966-82f22b2cc424.jpg')
 # print(generate_image_caption(image))

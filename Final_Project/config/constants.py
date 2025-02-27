@@ -28,7 +28,7 @@ SIMILAR_IMAGES_PROMPT = (
 )
 
 DESCRIBE_IMAGES_PROMPT = (
-    "Based on the query '{text_query}', describe these images in a single paragraph, giving an overall description:"
+    "Based on the query '{query}', describe these images in a single paragraph, giving an overall description:"
 )
 
 NO_IMAGES_FOUND_PROMPT = (
@@ -50,7 +50,7 @@ NO_RELEVANT_IMAGES_PROMPT = (
 HYBRID_QUERY_PROMPT = (
     """
     Highlight both aspects in your description:
-    - Text query: {text_query}
+    - Text query: {query}
     - Visual similarity to provided examples
     """
 )
@@ -63,8 +63,20 @@ IMAGE_OR_TEXT_PROMPT = (
     "Please provide either text or image input"
 )
 
+REPORT_NO_IMAGES_FOUND = (
+    "No image matching provided query has been found. Just report it and describe the query image."
+)
+
+DESCRIBE_SIMILARITY_QUERY = (
+    "Describe the similarity between the query images and these results in a paragraph.:"
+)
+
 SIMILARITY_THRESHOLD = 0.8
 
 MIN_RESULTS = 1
 
 MODEL = "gemini-2.0-flash"
+
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+
+MAX_FILES_PER_UPLOAD = 10
