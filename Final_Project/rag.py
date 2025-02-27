@@ -14,7 +14,7 @@ load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
 MODEL = os.getenv("GEMINI_MODEL")
 
-SIMILARITY_THRESHOLD = 0.8
+SIMILARITY_THRESHOLD = 0.7
 MIN_RESULTS = 1
 
 system_instruction = ("""
@@ -47,8 +47,8 @@ def determine_retrieval_intent(query: str) -> bool:
     Respond ONLY with 'true' or 'false' in lowercase."""
 
     try:
-        # response = model.generate_content(prompt)
-        response = chat.send_message(prompt)
+        response = model.generate_content(prompt)
+        # response = chat.send_message(prompt)
         return response.text.strip().lower() == 'true'
     except Exception as e:
         print(f"Error determining intent: {str(e)}")
@@ -251,6 +251,9 @@ def unified_rag_pipeline(text_query=None, query_uris=None, top_k=3):
                 image_data.append(encoded)
 
         if not image_data:
+            for message in chat.history:
+                print(f'role - ', message.role, end=": ")
+                print(message.parts[0].text)
             return [], "No relevant images found. Please try searching something else."
 
         # Generate dynamic prompt based on input type
@@ -279,4 +282,7 @@ def unified_rag_pipeline(text_query=None, query_uris=None, top_k=3):
     else:
         # response = model.generate_content(prompt_text or text_query)
         response = chat.send_message(prompt_text)
+        for message in chat.history:
+            print(f'role - ', message.role, end=": ")
+            print(message.parts[0].text)
     return retrieved_uris, response.text

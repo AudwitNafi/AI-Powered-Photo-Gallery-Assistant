@@ -1,0 +1,7 @@
+env/*
+Final_Project/chroma_db
+.env
+__pycache__/
+Final_Project/images
+Final_Project/query_images/*
+Final_Project/uploads/*

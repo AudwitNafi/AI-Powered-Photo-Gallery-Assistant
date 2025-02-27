@@ -17,3 +17,5 @@ google-generativeai
 python-dotenv
 langchain
 langchain-google-genai
+fastapi[standard]
+streamlit
