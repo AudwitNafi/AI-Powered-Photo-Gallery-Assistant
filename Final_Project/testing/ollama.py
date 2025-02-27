@@ -14,14 +14,14 @@ def load_or_create_dataframe(filename):
     else:
         df = pd.DataFrame(columns=['image_file', 'description'])
     return df
-df = load_or_create_dataframe('image_descriptions.csv')
+df = load_or_create_dataframe('../image_descriptions.csv')
 
 # print(glob.glob('./images/1.*'))
 
 def get_images(folder_path):
     return glob.glob(f"{folder_path}/*.jpg")
 
-image_paths = get_images('./images')
+image_paths = get_images('../images')
 image_paths = image_paths[:1]
 image_paths.sort()
 

@@ -7,7 +7,7 @@ from PIL import Image
 from utils.chromadb_config import add_image, configure_db
 from utils.generate_description import generate_image_description
 from utils.extract_date import split_date
-from utils.query_parser import extract_keywords, extract_keywords_from_image
+from utils.query_parser import extract_keywords_from_image
 # from utils.upload_image import upload_image
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
@@ -15,11 +15,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 # from rag import rag_pipeline, image_rag_pipeline
-from rag import unified_rag_pipeline
+from services.rag import unified_rag_pipeline
 from pydantic import BaseModel
 import shutil
-import asyncio
-import json
 import os
 import traceback
 
