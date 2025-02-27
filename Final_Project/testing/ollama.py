@@ -21,7 +21,7 @@ df = load_or_create_dataframe('../image_descriptions.csv')
 def get_images(folder_path):
     return glob.glob(f"{folder_path}/*.jpg")
 
-image_paths = get_images('../images')
+image_paths = get_images('../../images')
 image_paths = image_paths[:1]
 image_paths.sort()
 

@@ -1,74 +1,17 @@
-import base64
-import os
-import google.generativeai as genai
-from io import BytesIO
 from PIL import Image
-
-from utils.chromadb_config import configure_db, get_images
-from utils.query_parser import extract_keywords, extract_keywords_from_image, determine_requested_attribute
-from dotenv import load_dotenv
+from config.constants import *
+from db.chromadb_config import configure_db, get_images
+from utils.query_parser import extract_keywords, extract_keywords_from_image, determine_requested_attribute, determine_retrieval_intent
+from config.constants import *
+from config.llm_instantiation import load_gemini_model
+from services.image_service import encode_image
+from services.chat_service import ChatService
 image_collection = configure_db()
-# image_uris = sorted(get_images('uploads'))
-load_dotenv()
 
-API_KEY = os.getenv("GEMINI_API_KEY")
-MODEL = os.getenv("GEMINI_MODEL")
+model = load_gemini_model(MODEL)
 
-SIMILARITY_THRESHOLD = 0.7
-MIN_RESULTS = 1
-
-system_instruction = ("""
-You are a photo gallery assistant. Your responses should assist in retrieving relevant images, 
-describing images. Skip any preamble in your responses. Just provide the overall descriptions 
-in a paragraph for the retrieved images.
-""")
-model = genai.GenerativeModel(MODEL, system_instruction=system_instruction)
-chat = model.start_chat()
-
-from enum import Enum
-
-class IncludeValue(Enum):
-    DISTANCES = 'distances'
-    URIS = 'uris'
-    IDS = 'ids'
-    METADATAS = 'metadatas'
-
-def determine_retrieval_intent(query: str) -> bool:
-    """
-    Use LLM to determine if image retrieval is needed
-    Returns True if images should be retrieved, False otherwise
-    """
-    prompt = f"""Analyze this query and decide if it requires image retrieval. 
-    Return 'true' if the user is asking to see, show, find, or get images/photos/pictures.
-    Return 'false' for general questions or non-visual requests.
-
-    Query: {query}
-
-    Respond ONLY with 'true' or 'false' in lowercase."""
-
-    try:
-        response = model.generate_content(prompt)
-        # response = chat.send_message(prompt)
-        return response.text.strip().lower() == 'true'
-    except Exception as e:
-        print(f"Error determining intent: {str(e)}")
-        return False  # Fallback to no retrieval
-
-def encode_image(uri):
-    """Helper function to encode images for Gemini API"""
-    try:
-        img = Image.open(uri)
-        if img.mode != "RGB":
-            img = img.convert("RGB")
-        buffer = BytesIO()
-        img.save(buffer, format="JPEG")
-        return {
-            'mime_type': 'image/jpeg',
-            'data': base64.b64encode(buffer.getvalue()).decode('utf-8')
-        }
-    except Exception as e:
-        print(f"Error encoding image {uri}: {str(e)}")
-        return None
+system_instruction = SYSTEM_INSTRUCTION
+chat_service = ChatService(model_name = MODEL)
 
 def unified_rag_pipeline(text_query=None, query_uris=None, top_k=3):
     """
@@ -85,12 +28,13 @@ def unified_rag_pipeline(text_query=None, query_uris=None, top_k=3):
     # Query logic for different input combinations
     # At first, determine the user's intent
     if text_query and not query_uris:
-        should_retrieve = determine_retrieval_intent(text_query)
+        should_retrieve = determine_retrieval_intent(model, text_query)
         if not should_retrieve:
             # Handle non-image related queries
             # response = model.generate_content(text_query)
-            response = chat.send_message(text_query)
-            return [], response.text
+            response = chat_service.send_message(text_query)
+            chat_service.show_history()
+            return [], response
 
     # If retrieval requested or query image provided
     if should_retrieve or query_uris:
@@ -127,26 +71,28 @@ def unified_rag_pipeline(text_query=None, query_uris=None, top_k=3):
                     query_texts=[text_query],
                     n_results=top_k,
                     where={"id": {"$in": filtered_ids}},
-                    include=['distances', 'uris']
+                    include=['metadatas', 'uris']
                 )
                 # print(f"Filtered ids: {results['ids'][0]}")
-                similar_uris = results['uris'][0]
+                descriptions = [metadata['description'] for metadata in results['metadatas'][0]]
+                image_uris = results['uris'][0]
                 prompt_text += f"Images matching the provided filters/keywords have been found."
             else:
                 results = image_collection.query(
                     query_texts=[text_query],
                     n_results=top_k*2,
-                    include=['distances', 'uris']
+                    include=['distances', 'uris', 'metadatas']
                 )
+                descriptions = [metadata['description'] for metadata in results['metadatas'][0]]
                 distances = results['distances'][0]
                 print(distances)
                 uris = results['uris'][0]
                 ### THRESHOLD FILTERING
-                similar_uris = [uri for uri, distance in zip(uris, distances) if distance <= SIMILARITY_THRESHOLD]
+                image_uris = [uri for uri, distance in zip(uris, distances) if distance <= SIMILARITY_THRESHOLD]
                 prompt_text += f"No images matching provided keywords/filters have been found. So you are giving similar images."
 
             # get the result ids
-            image_uris = similar_uris
+            # image_uris = similar_uris
             print(f"filtered images based on desc match: {results['uris']}")
             print(f"image_uris: {image_uris}")
             if image_uris:
@@ -187,8 +133,9 @@ def unified_rag_pipeline(text_query=None, query_uris=None, top_k=3):
                     query_uris = query_uris,
                     n_results = top_k,
                     where = query_filter,
-                    include = ['distances', 'uris']
+                    include = ['metadatas', 'uris']
                 )
+                descriptions = [metadata['description'] for metadata in results['metadatas'][0]]
                 filtered_ids = results['ids'][0]
                 retrieved_uris = results['uris'][0]
             if filtered_ids:
@@ -198,10 +145,11 @@ def unified_rag_pipeline(text_query=None, query_uris=None, top_k=3):
                 results = image_collection.query(
                     query_uris=query_uris,
                     n_results=top_k*2,
-                    include=['distances', 'uris']
+                    include=['distances', 'uris', 'metadatas']
                 )
 
                 ### Threshold Filtering
+                descriptions = [metadata['description'] for metadata in results['metadatas'][0]]
                 distances = results['distances'][0]
                 uris = results['uris'][0]
                 retrieved_uris = [uri for uri, distance in zip(uris, distances) if distance <= SIMILARITY_THRESHOLD]
@@ -222,18 +170,17 @@ def unified_rag_pipeline(text_query=None, query_uris=None, top_k=3):
             results = image_collection.query(
                 query_uris=query_uris,
                 n_results=top_k*2,
-                include=['uris', 'distances']
+                include=['uris', 'distances', 'metadatas']
             )
 
             ### Threshold Filtering
-            ids = results['ids'][0]
+            descriptions = [metadata['description'] for metadata in results['metadatas'][0]]
             distances = results['distances'][0]
             uris = results['uris'][0]
             similar_uris = [uri for uri, distance in zip(uris, distances) if distance <= SIMILARITY_THRESHOLD]
             if similar_uris:
                 retrieved_uris = similar_uris
                 prompt_text = "Describe the similarity between the query images and these results in a paragraph.:"
-            # retrieved_uris = results['uris'][0]
             else:
                 retrieved_uris = []
                 prompt_text += "Report that no similar images found based on provided query image and describe the given image."
@@ -251,9 +198,7 @@ def unified_rag_pipeline(text_query=None, query_uris=None, top_k=3):
                 image_data.append(encoded)
 
         if not image_data:
-            for message in chat.history:
-                print(f'role - ', message.role, end=": ")
-                print(message.parts[0].text)
+            chat_service.show_history()
             return [], "No relevant images found. Please try searching something else."
 
         # Generate dynamic prompt based on input type
@@ -276,13 +221,12 @@ def unified_rag_pipeline(text_query=None, query_uris=None, top_k=3):
     # Final response generation
     if retrieved_uris:
         # response = model.generate_content([prompt_text] + image_data)
-        response = chat.send_message([prompt_text] + image_data)
+        response = chat_service.send_message(([prompt_text] + image_data), descriptions)
+        chat_service.show_history()
         retrieved_uris = [f"http://localhost:8000/{filename}" for filename in retrieved_uris]
         print(f'retrieved_uris: {retrieved_uris}')
     else:
         # response = model.generate_content(prompt_text or text_query)
-        response = chat.send_message(prompt_text)
-        for message in chat.history:
-            print(f'role - ', message.role, end=": ")
-            print(message.parts[0].text)
-    return retrieved_uris, response.text
+        response = chat_service.send_message(prompt_text)
+        chat_service.show_history()
+    return retrieved_uris, response

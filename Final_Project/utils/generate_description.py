@@ -9,12 +9,17 @@ MODEL = os.getenv("GEMINI_MODEL")
 genai.configure(api_key=API_KEY)
 
 def generate_image_description(image):
+  """
+  Generates detailed description of provided image.
+  """
   model = genai.GenerativeModel(model_name = MODEL)
   prompt = """
   Generate a detailed concise description in a single paragraph and comma-separated tags under it for this image. 
   Maintain the following format:
-  Description (bold): (...)
+  
+  Description (bold): ...
   Tags (bold): tag1, tag2, ...
+  
   No other content except these two sections (Description and Tags)
   """
   try:

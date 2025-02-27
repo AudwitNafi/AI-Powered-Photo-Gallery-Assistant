@@ -2,7 +2,8 @@ import google.generativeai as genai
 import re
 import json, base64
 from io import BytesIO
-from PIL import Image
+from config.constants import MODEL
+from config.llm_instantiation import load_gemini_model
 
 def extract_keywords(text):
     """
@@ -74,3 +75,24 @@ def determine_requested_attribute(text):
     except json.JSONDecodeError:
         print("Error: Could not parse response from Gemini.")
         return None
+
+def determine_retrieval_intent(model, query: str) -> bool:
+    """
+    Use LLM to determine if image retrieval is needed
+    Returns True if images should be retrieved, False otherwise
+    """
+    prompt = f"""Analyze this query and decide if it requires image retrieval. 
+    Return 'true' if the user is asking to see, show, find, or get images/photos/pictures.
+    Return 'false' for general questions or non-visual requests.
+
+    Query: {query}
+
+    Respond ONLY with 'true' or 'false' in lowercase."""
+
+    try:
+        # model = load_gemini_model(MODEL)
+        response = model.generate_content(prompt)
+        return response.text.strip().lower() == 'true'
+    except Exception as e:
+        print(f"Error determining intent: {str(e)}")
+        return False  # Fallback to no retrieval

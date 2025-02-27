@@ -4,7 +4,7 @@ from typing import Optional, List
 
 from PIL import Image
 
-from utils.chromadb_config import add_image, configure_db
+from db.chromadb_config import add_image, configure_db
 from utils.generate_description import generate_image_description
 from utils.extract_date import split_date
 from utils.query_parser import extract_keywords_from_image
@@ -15,12 +15,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 # from rag import rag_pipeline, image_rag_pipeline
-from services.rag import unified_rag_pipeline
+from services.rag_service import unified_rag_pipeline
 from pydantic import BaseModel
 import shutil
 import os
 import traceback
-
 
 image_collection = configure_db()
 app = FastAPI()
@@ -122,9 +121,6 @@ async def query_hybrid(
                 print(f"Deleted query image: {file_location}")
             except Exception as e:
                 print(f"Error deleting query image: {str(e)}")
-@app.get("/view")
-async def view():
-    return {"descriptions": desc_collection.get()}
 
 @app.post("/upload")
 async def batch_upload(

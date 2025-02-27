@@ -1,12 +1,12 @@
 from PIL import Image
-from utils.chromadb_config import configure_db
+from db.chromadb_config import configure_db
 from utils.query_parser import extract_keywords, extract_keywords_from_image, determine_requested_attribute
 image_collection = configure_db()
 import os
 import google.generativeai as genai
 from dotenv import load_dotenv
 # from utils.generate_description import generate_image_caption
-
+# from Final_Project.config.llm_instantiation import load_gemini_model
 load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
 MODEL = os.getenv("GEMINI_MODEL")
@@ -85,11 +85,12 @@ SIMILARITY_THRESHOLD = 0.5
 # print(filtered_results)
 #
 desc_results = image_collection.query(
-    query_texts = "find images of snake",
+    query_texts = "find images of cars",
     include=['metadatas', 'distances']
 )
 print(desc_results['distances'])
-print(desc_results['metadatas'])
+descriptions = [metadata['description'] for metadata in desc_results['metadatas'][0]]
+print(descriptions)
 # # #
 # print(desc_results['metadatas'])
 # image = Image.open('./uploads/07395ee3-b6be-4511-9966-82f22b2cc424.jpg')

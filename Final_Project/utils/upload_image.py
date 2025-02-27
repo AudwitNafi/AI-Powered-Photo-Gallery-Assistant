@@ -1,4 +1,4 @@
-from chromadb_config import add_image, add_description
+from config.chromadb_config import add_image, add_description
 from generate_description import generate_image_description
 from datetime import datetime
 
