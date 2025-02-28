@@ -41,6 +41,49 @@ npm install
 npm start
 ```
 
+## 📂 Project Directory Structure
+```
+.
+├── chroma_db
+├── env
+├── Final_Project
+│   ├── api
+│   │   ├── endpoints
+│   │   │   ├── chat_upload.py
+│   │   │   ├── gallery.py
+│   │   │   ├── get_image.py
+│   │   │   ├── query.py
+│   │   │   ├── query_hybrid.py
+│   │   │   ├── upload.py
+│   │   │   └── router.py
+│   ├── config
+│   │   ├── chromadb_config.py
+│   │   ├── constants.py
+│   │   ├── llm_instantiation.py
+│   │   └── settings.py
+│   ├── db
+│   │   └── chromadb_manager.py
+│   ├── services
+│   │   ├── chat_service.py
+│   │   ├── image_service.py
+│   │   └── rag_service.py
+│   ├── static
+│   │   ├── query_images
+│   │   └── uploads
+│   ├── utils
+│   │   ├── extract_date.py
+│   │   ├── gemini.py
+│   │   ├── generate_description.py
+│   │   └── query_parser.py
+│   ├── .env
+│   ├── .gitignore
+│   ├── enums.py
+│   ├── main.py
+│   ├── test.py
+│   ├── README.md
+│   └── requirements.txt
+```
+
 ## 🧪 How to Use
 
 1. **Upload images** through the Batch Image Uploader.
@@ -60,4 +103,3 @@ This project is licensed under the [MIT License](LICENSE).
 ---
 
 💡 *Built with love by David and the team.*
-
