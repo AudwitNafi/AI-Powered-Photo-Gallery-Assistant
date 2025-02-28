@@ -15,8 +15,8 @@ The **Conversational Memory Bot** is an AI-powered chatbot designed to revolutio
 
 1. **Clone the repository:**
 ```bash
-git clone https://github.com/yourusername/your-repo-name.git
-cd your-repo-name
+git clone https://github.com/BJIT-Academy-24/YSD_B4_AI_Audwit.git
+cd YSD_B4_AI_Audwit
 ```
 
 2. **Create and configure the `.env` file:**
@@ -102,4 +102,4 @@ This project is licensed under the [MIT License](LICENSE).
 
 ---
 
-💡 *Built with love by David and the team.*
+💡 *Built by Audwit Nafi Anam.*
