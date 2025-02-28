@@ -1,20 +1,63 @@
-# Smile Classifier
+# Conversational Memory Bot: AI-Powered Photo Gallery Assistant
 
-A web-based application for detecting smiles in facial images using a custom-trained convolutional neural network (CNN). The project allows users to upload images, classify them as "smiling" or "not smiling," and view a history of classifications.
+## 📝 Project Overview
+The **Conversational Memory Bot** is an AI-powered chatbot designed to revolutionize how users interact with their personal photo galleries.
 
-## Features
-- **Home Page:** Overview of the training process and methodology used to develop the smile classifier.
-- **Classify Page:** Upload an image, convert it to the appropriate format if necessary, and classify it in real-time.
-- **History Page:** View a table of previous classifications with image paths, predicted class, and timestamps.
+## 🧠 Technology Stack
 
-## Tech Stack
-- **Model Training:** TensorFlow (CNN) for smile detection.
-- **Web Framework:** FastAPI for application development.
-- **Database:** MySQL for storing classification history.
-- **Containerization:** Docker for deploying the project and database in a unified network.
-- **Other Tools:** Scikit-learn, SQLAlchemy for ORM, and image processing utilities.
+- **Backend:** FastAPI
+- **Vector Database:** ChromaDB
+- **AI Model:** Gemini 2.0 Flash API
+- **Frontend:** React
+- **Framework:** Retrieval-Augmented Generation (RAG)
 
-## Deployment
-The project is fully containerized using Docker and accessible over a mapped port, ensuring smooth deployment and scalability.
+## 🛠️ Setup and Installation
 
-Explore the full code and documentation in this repository. 🚀
+1. **Clone the repository:**
+```bash
+git clone https://github.com/yourusername/your-repo-name.git
+cd your-repo-name
+```
+
+2. **Create and configure the `.env` file:**
+Create a `.env` file in the root directory and add the following variables:
+```env
+GEMINI_API_KEY=your-gemini-api-key-here
+CHROMADB_PATH=path/to/your/chromadb
+IMAGE_UPLOAD_DIR=path/to/uploaded/images
+```
+Make sure to replace `your-gemini-api-key-here` with your actual Gemini 2.0 Flash API key.
+
+3. **Backend Setup (FastAPI):**
+```bash
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+4. **Frontend Setup (React):**
+```bash
+cd frontend
+npm install
+npm start
+```
+
+## 🧪 How to Use
+
+1. **Upload images** through the Batch Image Uploader.
+2. **Query images** using natural language in the Chat Interface.
+3. **View retrieved images** and descriptions in the interactive gallery.
+4. **Find similar images** and explore based on visual similarity.
+
+## 🎯 Future Improvements
+
+- **Advanced Tagging:** Automatically assign descriptive keywords.
+- **Enhanced Visual Search:** Improve visual similarity using advanced image embeddings.
+- **User Feedback:** Allow users to refine search results through interactive feedback.
+
+## 📝 License
+This project is licensed under the [MIT License](LICENSE).
+
+---
+
+💡 *Built with love by David and the team.*
+
